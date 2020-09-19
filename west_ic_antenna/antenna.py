@@ -56,8 +56,7 @@ class WestIcrhAntenna():
         >>> Cs = [50, 40, 60, 70]
         >>> west_antenna = WestIcrhAntenna(freq, Cs)
         
-        '''
-        # default values
+        '''       
         self._frequency = frequency or rf.Network(DEFAULT_BRIDGE).frequency
         self._Cs = Cs
         self.antenna_s4p_file = antenna_s4p_file or DEFAULT_FRONT_FACE
@@ -83,12 +82,23 @@ class WestIcrhAntenna():
         self.port_left = rf.Circuit.Port(self.frequency, 'port_left', z0=self.windows_impedance_transformer_left.z0[:,0])
         self.port_right = rf.Circuit.Port(self.frequency, 'port_right', z0=self.windows_impedance_transformer_right.z0[:,0])
 
-        
+        # Front face 
         self._antenna = rf.Network(self.antenna_s4p_file)
+        self._antenna.name = self._antenna.name or 'antenna'  # set a name if not exist
 
-        self.antenna = self._antenna.interpolate(self.frequency)
-        # self.antenna.name = 'antenna'
-
+        # if the antenna front-face Network is defined on a single point (ex: from TOPICA)
+        # duplicate this points to the other frequencies
+        front_face_freq = self._antenna.frequency
+        if len(front_face_freq) == 1:
+            new_freq = self._frequency#rf.Frequency(front_face_freq.f, front_face_freq.f, unit='Hz', npoints=2)
+            new_ntw = rf.Network(frequency=new_freq)
+            new_ntw.z0 = np.repeat(self._antenna.z0, len(new_freq), axis=0)
+            new_ntw.s = np.repeat(self._antenna.s, len(new_freq), axis=0)
+            new_ntw.name = self._antenna.name or 'antenna'  # set a name if not exist
+            self.antenna = new_ntw
+        else:
+            # interpolate the results for the frequency band
+            self.antenna = self._antenna.interpolate(self._frequency)        
 
     def __repr__(self):
         return f'WEST ICRH Antenna: C={self._Cs} pF, {self._frequency}'
@@ -342,7 +352,7 @@ class WestIcrhAntenna():
 
             sol = sp.optimize.minimize(self._optim_fun_one_side, C0,
                                           args=(f_match, side, z_match),
-                                          constraints=const, method='SLSQP',
+                                          constraints=const, method='SLSQP', #options={'ftol':1e-4, 'eps':1e-1},
                                           )
             # test if the solution found is the capacitor range
             success = sol.success
@@ -481,9 +491,30 @@ class WestIcrhAntenna():
         '''        
         return self._frequency.f
     
+    @property
+    def f_scaled(self):
+        '''
+        Antenna Frequency band scaled to the Frequency unit
+
+        Returns
+        -------
+        f_scaled : array
+            Antenna frequency band values in the Frequency unit
+
+        '''
+        return self._frequency.f_scaled
+    
+    
     def s_act(self, power, phase, Cs=None):
         '''
         Active S-parameters for a given excitation
+
+        Active s-parameters are defined by :
+        
+        .. math::
+                    
+            \mathrm{active}(s)_{mn} = \sum_i s_{mi} \\frac{a_i}{a_n}
+            
 
         Parameters
         ----------
@@ -508,6 +539,15 @@ class WestIcrhAntenna():
         '''
         Active Z-parameters for a given excitation
 
+        The active Z-parameters are defined by:
+            
+        .. math::
+                    
+            \mathrm{active}(z)_{m} = z_{0,m} \\frac{1 + \mathrm{active}(s)_m}{1 - \mathrm{active}(s)_m}
+            
+        where :math:`z_{0,m}` is the characteristic impedance and
+        :math:`\mathrm{active}(s)_m` the active S-parameter of port :math:`m`.
+
         Parameters
         ----------
         power : list or array
@@ -529,6 +569,14 @@ class WestIcrhAntenna():
     def vswr_act(self, power, phase, Cs=None):
         """
         Active VSWR for a given excitation
+
+        The active VSWR is defined by :
+            
+        .. math::
+                    
+            \mathrm{active}(vswr)_{m} = \\frac{1 + |\mathrm{active}(s)_m|}{1 - |\mathrm{active}(s)_m|}
+    
+        where :math:`\mathrm{active}(s)_m` the active S-parameter of port :math:`m`.
         
         Parameters
         ----------
@@ -675,8 +723,8 @@ class WestIcrhAntenna():
         _Cs = Cs or self.Cs
         # average currents 
         Is = self.currents(power, phase, Cs=_Cs)
-        Is_left = np.abs(np.sqrt(Is[:,0]**2 + Is[:,2]**2))
-        Is_right =  np.abs(np.sqrt(Is[:,1]**2 +Is[:,3]**2))
+        Is_left = np.abs(np.sqrt(Is[:,0]**2 + Is[:,1]**2))
+        Is_right =  np.abs(np.sqrt(Is[:,2]**2 +Is[:,3]**2))
         
         # coupled power
         Pr = self.Pr(power, phase, Cs=_Cs)
@@ -704,8 +752,8 @@ class WestIcrhAntenna():
         V = self.antenna.z @ Is
         Prf = 0.5 * V @ Is
         
-        I_left_avg = np.sqrt(np.sum(np.abs(Is[0:2])**2)/2)
-        I_right_avg = np.sqrt(np.sum(np.abs(Is[2:4])**2)/2)
+        I_left_avg = np.sqrt(np.abs(Is[0])**2 + np.abs(Is[1])**2)
+        I_right_avg = np.sqrt(np.abs(Is[2])**2 + np.abs(Is[3])**2)
         
         Rc_left = 2*Prf.real/I_left_avg**2
         Rc_right = 2*Prf.real/I_right_avg**2
