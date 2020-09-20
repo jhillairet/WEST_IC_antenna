@@ -1,7 +1,0 @@
-numpy
-scipy
-matplotlib
-skrf
-tqdm
-scipy
-pandas
