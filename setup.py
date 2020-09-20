@@ -1,6 +1,14 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# inspired from from https://github.com/navdeep-G/setup.py/
+import setuptools
+from setuptools import find_packages, setup, Command
+import io
+import os
+import sys
 import pathlib
-from setuptools import setup, find_packages
+from shutil import rmtree
+
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
@@ -15,34 +23,125 @@ with open('west-ic-antenna/__init__.py') as fid:
             VERSION = line.strip().split()[-1][1:-1]
             break
         
-# This call to setup() does all the work
+# Note: To use the 'upload' functionality of this file, you must:
+#   $ pipenv install twine --dev
+
+
+# Package meta-data.
+NAME = 'west-ic-antenna'
+DESCRIPTION = 'WEST ICRF Antenna RF Model',
+URL = 'https://github.com/jhillairet/WEST_IC_antenna'
+EMAIL = 'julien.hillairet@gmail.com'
+AUTHOR = 'Julien Hillairet'
+REQUIRES_PYTHON = '>=3.6.0'
+
+# What packages are required for this module to be executed?
+REQUIRED = [
+    'scikit-rf', 'numpy', 'scipy', 'matplotlib', 'tqdm', 'pandas' 
+]
+
+# What packages are optional?
+EXTRAS = {
+    #
+}
+
+# The rest you shouldn't have to touch too much :)
+# ------------------------------------------------
+# Except, perhaps the License and Trove Classifiers!
+# If you do change the License, remember to change the Trove Classifier for that!
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+# Import the README and use it as the long-description.
+# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
+try:
+    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+        long_description = '\n' + f.read()
+except FileNotFoundError:
+    long_description = DESCRIPTION
+
+# Load the package's __version__.py module as a dictionary.
+about = {}
+if not VERSION:
+    project_slug = NAME.lower().replace("-", "_").replace(" ", "_")
+    with open(os.path.join(here, project_slug, '__version__.py')) as f:
+        exec(f.read(), about)
+else:
+    about['__version__'] = VERSION
+
+
+class UploadCommand(Command):
+    """Support setup.py upload."""
+
+    description = 'Build and publish the package.'
+    user_options = []
+
+    @staticmethod
+    def status(s):
+        """Prints things in bold."""
+        print('\033[1m{0}\033[0m'.format(s))
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            self.status('Removing previous builds…')
+            rmtree(os.path.join(here, 'dist'))
+        except OSError:
+            pass
+
+        self.status('Building Source and Wheel (universal) distribution…')
+        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
+
+        self.status('Uploading the package to PyPI via Twine…')
+        os.system('twine upload dist/*')
+
+        self.status('Pushing git tags…')
+        os.system('git tag v{0}'.format(about['__version__']))
+        os.system('git push --tags')
+
+        sys.exit()
+
+
+# Where the magic happens:
 setup(
-    name="west-ic-antenna",
+    name=NAME,
     version=VERSION,
-    description="WEST ICRF Antenna RF Model",
+    description=DESCRIPTION,
     long_description=README,
-    long_description_content_type="text/markdown",
-    url="https://github.com/jhillairet/WEST_IC_antenna",
-    author="Julien Hillairet",
-    author_email="julien.hillairet@gmail.com",
-    license="MIT",
-    classifiers=[
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-    ],
-    packages=find_packages(),
-	install_requires = [
-		'numpy',
-		'scipy',
-        'scikit-rf',
-        'matplotlib',
-		],
+    long_description_content_type='text/markdown',
+    author=AUTHOR,
+    author_email=EMAIL,
+    python_requires=REQUIRES_PYTHON,
+    url=URL,
+    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    # If your package is a single module, use this instead of 'packages':
+    # py_modules=['mypackage'],
+
+    # entry_points={
+    #     'console_scripts': ['mycli=mymodule:cli'],
+    # },
+    install_requires=REQUIRED,
+    extras_require=EXTRAS,
     include_package_data=True,
-    entry_points={
-        "console_scripts": [
-            "realpython=reader.__main__:main",
-        ]
+    license='MIT',
+    classifiers=[
+        # Trove classifiers
+        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy'
+    ],
+    # $ setup.py publish support.
+    cmdclass={
+        'upload': UploadCommand,
     },
 )
 
