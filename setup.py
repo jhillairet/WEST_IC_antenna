@@ -127,6 +127,7 @@ setup(
     # },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
+    setup_requires=['setuptools_scm'],
     include_package_data=True,
     license='MIT',
     classifiers=[
