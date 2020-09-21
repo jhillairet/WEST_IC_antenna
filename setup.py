@@ -17,7 +17,7 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 # retrieve version
-with open('west-ic-antenna/__init__.py') as fid:
+with open('west_ic_antenna/__init__.py') as fid:
     for line in fid:
         if line.startswith('__version__'):
             VERSION = line.strip().split()[-1][1:-1]
