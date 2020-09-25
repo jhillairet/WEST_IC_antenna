@@ -19,6 +19,7 @@ S_PARAMS_DIR = here+'/data/Sparameters/'
 # NB : bridge and impedance transformer should be defined for the same frequencies
 DEFAULT_BRIDGE = S_PARAMS_DIR+'WEST_ICRH_Bridge_30to70MHz.s3p'
 DEFAULT_IMPEDANCE_TRANSFORMER = S_PARAMS_DIR+'WEST_ICRH_Transf_Window_PumpHolePMC.s2p'
+DEFAULT_SERVICE_STUB = S_PARAMS_DIR+'WEST_ICRH_Stub_30to70MHz.s3p' 
 # antenna front face data are interpolated on bridge's frequencies 
 DEFAULT_FRONT_FACE = S_PARAMS_DIR+'front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p'
 
@@ -77,7 +78,18 @@ class WestIcrhAntenna():
         self.windows_impedance_transformer_right = self.windows_impedance_transformer.copy()
         self.windows_impedance_transformer_left.name = 'line_left'
         self.windows_impedance_transformer_right.name = 'line_right'
+        
+        _service_stub = rf.Network(DEFAULT_SERVICE_STUB).interpolate(self.frequency)
+        
+        self.service_stub_left = _service_stub.copy()
+        self.service_stub_left.name = 'service_stub_left'
+        self.service_stub_right = _service_stub.copy()
+        self.service_stub_right.name = 'service_stub_right'
 
+        # service stub shorts
+        self.short_left = rf.Circuit.Ground(self.frequency, name='short_left')
+        self.short_right = rf.Circuit.Ground(self.frequency, name='short_right')
+        
         # additional elements which will be usefull later
         self.port_left = rf.Circuit.Port(self.frequency, 'port_left', z0=self.windows_impedance_transformer_left.z0[:,0])
         self.port_right = rf.Circuit.Port(self.frequency, 'port_right', z0=self.windows_impedance_transformer_right.z0[:,0])
@@ -187,6 +199,7 @@ class WestIcrhAntenna():
         capa_C4 = self.capa(C4, z0_bridge=self.bridge_right.z0[0][2], z0_antenna=self.antenna.z0[0][3])
         capa_C4.name = 'C4'
 
+
         # WARNING !
         # antenna port numbering convention does not follow capa and voltage :
         # view from behind:
@@ -195,6 +208,7 @@ class WestIcrhAntenna():
         # while for capa and voltage it is:
         #   C1  C3
         #   C2  C4
+        # service stub 3rd ports are left open
         connections = [
             [(self.antenna, 0), (capa_C1, 1)],
             [(self.antenna, 1), (capa_C3, 1)],
@@ -206,8 +220,12 @@ class WestIcrhAntenna():
             [(capa_C4, 0), (self.bridge_right, 2)],
             [(self.bridge_left, 0), (self.windows_impedance_transformer_left, 1)],
             [(self.bridge_right, 0), (self.windows_impedance_transformer_right, 1)],
-            [(self.windows_impedance_transformer_left, 0), (self.port_left, 0)],
-            [(self.windows_impedance_transformer_right, 0), (self.port_right, 0)]
+            [(self.windows_impedance_transformer_left, 0), (self.service_stub_left, 1)],
+            [(self.service_stub_left, 0), (self.port_left, 0)],
+            [(self.windows_impedance_transformer_right, 0), (self.service_stub_right, 1)],
+            [(self.service_stub_right, 0), (self.port_right, 0)],
+            [(self.service_stub_left, 2), (self.short_left, 0)],
+            [(self.service_stub_right, 2), (self.short_right, 0)],
         ]
         return rf.Circuit(connections)
 
@@ -264,7 +282,7 @@ class WestIcrhAntenna():
             antenna side to match: 'left' or 'right'
         z_match: complex, optional
             antenna feeder characteristic impedance to match on. Default is 30 ohm
-        
+         
         Returns
         -------
         r: float
@@ -303,7 +321,7 @@ class WestIcrhAntenna():
         return r
 
 
-    def match_one_side(self, f_match=55e6, solution_number=1, side='left', z_match=29.89+0j):
+    def match_one_side(self, f_match=55e6, solution_number=1, side='left', z_match=29.89+0j, decimals=None):
         '''
         Search best capacitance to match the specified side of the antenna. 
         
@@ -319,6 +337,8 @@ class WestIcrhAntenna():
             antenna side to match: 'left' or 'right'
         z_match: complex, optional
             antenna feeder characteristic impedance to match on. Default is 30 ohm            
+        decimals : int, optional
+            Round the capacitances to the given number of decimals. Default is None (no rounding)
 
         Returns
         -------
@@ -349,10 +369,16 @@ class WestIcrhAntenna():
                     contin = False
                 elif C0[0] < C0[1] and solution_number == 2:
                     contin = False
-
+            
+            # # starting points are opposite and already oriented toward the good solution
+            # if solution_number == 1:
+            #     C0 = [120, 30]
+            # elif solution_number == 2:
+            #     C0 = [30, 120]
+                
             sol = sp.optimize.minimize(self._optim_fun_one_side, C0,
                                           args=(f_match, side, z_match),
-                                          constraints=const, method='SLSQP', #options={'ftol':1e-4, 'eps':1e-1},
+                                          constraints=const, method='SLSQP', #options={'ftol':1e-5},
                                           )
             # test if the solution found is the capacitor range
             success = sol.success
@@ -369,7 +395,55 @@ class WestIcrhAntenna():
         elif side == 'right':
             Cs = [150, 150, sol.x[0], sol.x[1]]
 
+        # round result to realistic values if requested
+        if decimals:
+            Cs = list(np.round(Cs, decimals=decimals))
+            print('Rounded result:', Cs)
+
         return Cs
+    
+    def match_both_sides(self, f_match=55e6, solution_number=1, z_match=[29.89+0j, 29.89+0j], decimals=None):
+        # TODO
+        pass
+    
+    def _Xs(self, f):
+        """
+        Strap Reactance fit with frequency
+
+        Parameters
+        ----------
+        f : array
+            frequency in Hz
+
+        Returns
+        -------
+        Xs : real array
+            strap reactance (nb_f,1)
+
+        """
+        # scaled frequency
+        f_MHz = f/1e6
+        Xs = 1.66e-04*f_MHz**3 -1.53e-02*f_MHz**2 + 1.04*f_MHz -7.77
+        return Xs
+    
+    def load(self, Rc, Xs=None):
+        '''
+        Load the antenna model with an ideal plasma load (no poloidal and toroidal cross coupling)
+
+        Parameters
+        ----------
+        Rc : float
+            Coupling Resistance [Ohm]
+        Xs : float, optional
+            Strap reactance. The default is None (use frequency best fit).
+
+        Returns
+        -------
+        None.
+
+        '''
+        # need good front face (re)definition (interpolation)
+        pass
     
     def b(self, a, Cs=None):
         '''
@@ -621,7 +695,8 @@ class WestIcrhAntenna():
 
         Example
         -------
-        >>> V1, V2, V3, V4 = west_antenna.voltages([1, 1], [0, pi])
+        >>> Vs = west_antenna.voltages([1, 1], [0, pi])
+        
         """
         _Cs = Cs or self.Cs
         idx_antenna = [0, 4, 2, 6]  # for port 1,2,3,4 of the antenna
@@ -647,12 +722,44 @@ class WestIcrhAntenna():
 
         Example
         -------
-        >>> I1, I2, I3, I4 = west_antenna.currents([1, 1], [0, pi])
+        >>> Is = west_antenna.currents([1, 1], [0, pi])
 
         """
         _Cs = Cs or self.Cs
         idx_antenna = [0, 4, 2, 6]  # for port 1,2,3,4 of the antenna
         return self.circuit(_Cs).currents(power, phase)[:, idx_antenna]
+
+    def Z_T(self, power, phase, Cs=None):
+        """
+        Impedances Z_T at the T-junction
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+            
+        Returns
+        -------
+        Z_T : complex array (nbf,2)
+            Impedance at the T-junction [Z_T_left, Z_T_right]
+
+        Example
+        -------
+        >>> Z_T = west_antenna.Z_T([1, 1], [0, pi])
+
+        """
+        _Cs = Cs or self.Cs
+        Is = self.circuit(Cs=_Cs).currents(power, phase)
+        Vs = self.circuit(Cs=_Cs).voltages(power, phase)
+        Zs = Vs/Is
+        # indexes 7 and 8 corresponds to the connections between impedance
+        # transformer and bridges for left and right sides respectively
+        Z_T = Zs[:,(7,8)]
+        return Z_T
 
     def _Xs(self):
         """
@@ -703,6 +810,10 @@ class WestIcrhAntenna():
         Coupling Resistances of both sides of the antenna
         
         Rc = 2Pt/Is^2 where Pt is the transmitted power and Is the average current
+            
+        where 
+        - Pt is the transmitted (coupled) power
+        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
         
         Parameters
         ----------
@@ -739,13 +850,21 @@ class WestIcrhAntenna():
 
     def front_face_Rc(self, Is=[+1,-1,-1,+1]):
         """
-        (Ideal) front-face coupling resistance
+        (Ideal) front-face coupling resistances
+        
+        Coupling resistance is defined as :
+        
+            Rc = 2*Pt / Is^2
+            
+        where 
+        - Pt is the transmitted (coupled) power
+        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
         
         Parameters
         ----------
         Is : list or array (complex)
             Current excitation at antenna front-face ports. 
-            Default is [+1,-1,-1,+1]
+            Default is [+1,-1,-1,+1] (dipole)
         
         """
         
