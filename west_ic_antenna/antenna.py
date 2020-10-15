@@ -24,7 +24,7 @@ DEFAULT_SERVICE_STUB = S_PARAMS_DIR+'WEST_ICRH_Stub_30to70MHz.s3p'
 DEFAULT_FRONT_FACE = S_PARAMS_DIR+'front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p'
 
 class WestIcrhAntenna():
-    def __init__(self, frequency=None, Cs=[50,50,50,50], antenna_s4p_file=None):
+    def __init__(self, frequency=None, Cs=[50,50,50,50], front_face=None):
         '''
         WEST ICRH Antenna circuit model
 
@@ -36,8 +36,8 @@ class WestIcrhAntenna():
         Cs : list or array
             antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is [50,50,50,50] [pF]
             
-        antenna_s4p_file: str, optional
-            path to the Touchstone file of the antenna front face. Default is None (Vacuum case). 
+        front_face: str or skrf.Network, optional
+            str: path to the Touchstone file of the antenna front face. Default is None (Vacuum case). 
             NB: the Frequency object should be compatible with this file. 
             
             
@@ -59,8 +59,7 @@ class WestIcrhAntenna():
         
         '''       
         self._frequency = frequency or rf.Network(DEFAULT_BRIDGE).frequency
-        self._Cs = Cs
-        self.antenna_s4p_file = antenna_s4p_file or DEFAULT_FRONT_FACE
+        self._Cs = Cs      
         
         # load networks
         _bridge = rf.Network(DEFAULT_BRIDGE)
@@ -94,10 +93,24 @@ class WestIcrhAntenna():
         self.port_left = rf.Circuit.Port(self.frequency, 'port_left', z0=self.windows_impedance_transformer_left.z0[:,0])
         self.port_right = rf.Circuit.Port(self.frequency, 'port_right', z0=self.windows_impedance_transformer_right.z0[:,0])
 
-        # Front face 
-        self._antenna = rf.Network(self.antenna_s4p_file)
+        # antenna front-face
+        front_face = front_face or DEFAULT_FRONT_FACE
+        if type(front_face) == str:
+            # if a string, this should be a path to a Touchstone file
+            self._antenna = rf.Network(front_face)
+        elif type(front_face) == rf.network.Network:
+            # if a Network
+            self._antenna = front_face.copy()
+            
         self._antenna.name = self._antenna.name or 'antenna'  # set a name if not exist
-
+        
+        # Renormalize to 50 ?
+        # self.bridge_left.renormalize(50)
+        # self.bridge_right.renormalize(50)
+        # self.windows_impedance_transformer_left.renormalize(50)
+        # self.windows_impedance_transformer_right.renormalize(50)
+        # self._antenna.renormalize(50)
+        
         # if the antenna front-face Network is defined on a single point (ex: from TOPICA)
         # duplicate this points to the other frequencies
         front_face_freq = self._antenna.frequency
@@ -220,6 +233,8 @@ class WestIcrhAntenna():
             [(capa_C4, 0), (self.bridge_right, 2)],
             [(self.bridge_left, 0), (self.windows_impedance_transformer_left, 1)],
             [(self.bridge_right, 0), (self.windows_impedance_transformer_right, 1)],
+            # [(self.windows_impedance_transformer_left, 0), (self.port_left, 0)],
+            # [(self.windows_impedance_transformer_right, 0),  (self.port_right, 0)],
             [(self.windows_impedance_transformer_left, 0), (self.service_stub_left, 1)],
             [(self.service_stub_left, 0), (self.port_left, 0)],
             [(self.windows_impedance_transformer_right, 0), (self.service_stub_right, 1)],
@@ -289,6 +304,7 @@ class WestIcrhAntenna():
             Residuals of Z - Z_match
             r = (Z_re - np.real(z_match))**2 + (Z_im - np.imag(z_match))**2
         '''
+        # print(C)
         Ctop, Cbot = C
 
         if side == 'left':
@@ -319,9 +335,10 @@ class WestIcrhAntenna():
         ])
         r = (Z_re - np.real(z_match))**2 + (Z_im - np.imag(z_match))**2
         return r
+       
 
-
-    def match_one_side(self, f_match=55e6, solution_number=1, side='left', z_match=29.89+0j, decimals=None):
+    def match_one_side(self, f_match=55e6, solution_number=1, side='left', 
+                       z_match=29.89+0j, decimals=None):
         '''
         Search best capacitance to match the specified side of the antenna. 
         
@@ -347,8 +364,8 @@ class WestIcrhAntenna():
 
         '''
         # creates an antenna circuit for single frequency only to speed-up calculations
-        freq_match = rf.Frequency(f_match, f_match, 1, unit='Hz')
-        self._antenna_match = WestIcrhAntenna(freq_match, antenna_s4p_file=self.antenna_s4p_file)
+        freq_match = rf.Frequency.from_f(f_match, unit='Hz') #rf.Frequency(f_match, f_match, 1, unit='Hz')
+        self._antenna_match = WestIcrhAntenna(freq_match, front_face=self.antenna)
 
         # setup constraint optimization to force finding the requested solution
         sol_sign = +1 if solution_number == 1 else -1
@@ -402,18 +419,103 @@ class WestIcrhAntenna():
 
         return Cs
     
+    def match_both_sides_separately(self, f_match=55e6, solution_number=1, 
+                                    z_match=29.89+0j, decimals=None):
+        """
+        Match both sides separatly and returns capacitance values for each sides.
+        
+        Match the left side with right side unmatched, then match the right side 
+        with the left side unmatched. Combine the results 
+
+        Parameters
+        ----------
+        f_match: float, optional
+            match frequency in [Hz]. Default is 55 MHz.
+        solution_number: int, optional
+            1 or 2: 1 for C_top > C_lower or 2 for C_top < C_lower
+        z_match: complex, optional
+            antenna feeder characteristic impedance to match on. Default is 30 ohm            
+        decimals : int, optional
+            Round the capacitances to the given number of decimals. Default is None (no rounding)
+
+
+        Returns
+        -------
+        Cs_match : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+
+        """
+        C_left = self.match_one_side(side='left', f_match=f_match, solution_number=solution_number, z_match=z_match, decimals=decimals)
+        C_right = self.match_one_side(side='right', f_match=f_match, solution_number=solution_number, z_match=z_match, decimals=decimals)
+        
+        C_match = [C_left[0], C_left[1], C_right[2], C_right[3]]
+        return C_match
+    
     def match_both_sides(self, f_match=55e6, solution_number=1, z_match=[29.89+0j, 29.89+0j], decimals=None):
         # TODO
         pass
     
-    def _Xs(self, f):
+    def optimum_frequency_index(self, power, phase, Cs=None):
+        """
+        Array indexes of the optimum frequency with respect to active S-parameters for a given excitation
+ 
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+      
+        Returns
+        -------
+        f_opt_idx : array (2x1)
+            array indexes of the optimum frequencies for each sides of the antenna
+        
+        """        
+        # use internal capacitances if not passed
+        Cs = Cs or self.Cs        
+        # active S-parameters for dipole excitation
+        s_act = self.s_act(power, phase, Cs=Cs)
+
+        f_opt_idx = np.argmin(np.abs(s_act), axis=0)
+        return f_opt_idx
+    
+    def optimum_frequency(self, power, phase, Cs=None):
+        """
+        Optimum frequency with respect to active S-parameters for a given excitation
+ 
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+      
+        Returns
+        -------
+        f_opt : array (2x1)
+            optimum frequencies for each sides of the antenna
+        
+        """
+        # use internal capacitances if not passed
+        Cs = Cs or self.Cs
+
+        f_opt = self.frequency.f[self.optimum_frequency_index(power, phase, Cs=Cs)]
+        return f_opt          
+
+    
+    def _Xs(self, f=None):
         """
         Strap Reactance fit with frequency
 
         Parameters
         ----------
-        f : array
-            frequency in Hz
+        f : array, opt
+            frequency in Hz. Default is None (use internal frequency)
 
         Returns
         -------
@@ -421,6 +523,7 @@ class WestIcrhAntenna():
             strap reactance (nb_f,1)
 
         """
+        f = f or self.frequency.f
         # scaled frequency
         f_MHz = f/1e6
         Xs = 1.66e-04*f_MHz**3 -1.53e-02*f_MHz**2 + 1.04*f_MHz -7.77
@@ -442,8 +545,40 @@ class WestIcrhAntenna():
         None.
 
         '''
-        # need good front face (re)definition (interpolation)
-        pass
+        # reactance : if not passed, use best fit 
+        Xs = Xs or self._Xs()
+        # interpolating the default z0 with the one of the CAD model
+        # to keep the same z0 behaviour
+        f = rf.interp1d(self._antenna.f, self._antenna.z0[:,0])
+        _z0 = f(self.f)
+        # port and short definitions
+        _port1 = rf.Circuit.Port(self.frequency, 'Port1', z0=_z0)
+        _port2 = rf.Circuit.Port(self.frequency, 'Port2', z0=_z0)
+        _port3 = rf.Circuit.Port(self.frequency, 'Port3', z0=_z0)
+        _port4 = rf.Circuit.Port(self.frequency, 'Port4', z0=_z0)
+        _short1 = rf.Circuit.Ground(self.frequency, 'Gnd1', z0=_z0)
+        _short2 = rf.Circuit.Ground(self.frequency, 'Gnd2', z0=_z0)
+        _short3 = rf.Circuit.Ground(self.frequency, 'Gnd3', z0=_z0)
+        _short4 = rf.Circuit.Ground(self.frequency, 'Gnd4', z0=_z0)
+        # load definition
+        z_s = Rc + 1j*Xs
+        media = rf.DefinedGammaZ0(frequency=self.frequency, z0=_z0)
+        _load1 = media.resistor(z_s, name='load1', z0=_z0)
+        _load2 = media.resistor(z_s, name='load2', z0=_z0)
+        _load3 = media.resistor(z_s, name='load3', z0=_z0)
+        _load4 = media.resistor(z_s, name='load4', z0=_z0)
+        
+        cnx = [
+                [(_port1, 0), (_load1, 0)], [(_load1, 1), (_short1, 0)],   
+                [(_port2, 0), (_load2, 0)], [(_load2, 1), (_short2, 0)],
+                [(_port3, 0), (_load3, 0)], [(_load3, 1), (_short3, 0)],
+                [(_port4, 0), (_load4, 0)], [(_load4, 1), (_short4, 0)],            
+            ]
+                
+        crt = rf.Circuit(cnx)
+        _antenna = crt.network
+        _antenna.name = 'antenna'
+        self.antenna = _antenna
     
     def b(self, a, Cs=None):
         '''
@@ -834,8 +969,8 @@ class WestIcrhAntenna():
         _Cs = Cs or self.Cs
         # average currents 
         Is = self.currents(power, phase, Cs=_Cs)
-        Is_left = np.abs(np.sqrt(Is[:,0]**2 + Is[:,1]**2))
-        Is_right =  np.abs(np.sqrt(Is[:,2]**2 +Is[:,3]**2))
+        Is_left = np.sqrt(np.abs(Is[:,0])**2 + np.abs(Is[:,1])**2)
+        Is_right =  np.sqrt(np.abs(Is[:,2])**2 + np.abs(Is[:,3])**2)
         
         # coupled power
         Pr = self.Pr(power, phase, Cs=_Cs)
@@ -847,7 +982,51 @@ class WestIcrhAntenna():
         
         return np.c_[Rc_left, Rc_right]
         
+    def Rc_WEST(self, power, phase, Cs=None):
+        """
+        Coupling Resistances of both sides of the antenna - WEST Approximation
+        
+        Rc = 2Pt/Is^2 where Pt is the transmitted power and Is the average current
+            
+        where 
+        - Pt is the transmitted (coupled) power
+        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
+        
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)        
+                    [C1] [C3]
+                    [C2] {C4} (view from the rear of the antenna)
 
+        Returns
+        -------
+        Rc: array (nb_f, 2)
+            Coupling resistances [Ohm] of both sides vs freq
+
+        """
+        _Cs = Cs or self.Cs
+        # average currents 
+        Vs = self.voltages(power, phase, Cs=_Cs)
+        Vs_left = np.sqrt(np.abs(Vs[:,0])**2 + np.abs(Vs[:,1])**2)
+        Vs_right =  np.sqrt(np.abs(Vs[:,2])**2 + np.abs(Vs[:,3])**2)
+        # Reactance
+        Xs = self._Xs()
+        
+        # coupled power
+        Pr = self.Pr(power, phase, Cs=_Cs)
+        Pi = power
+        Pt = Pi - Pr
+        # coupling resistance 
+        Rc_left = 2 * Xs**2 * Pt[:,0]/Vs_left**2
+        Rc_right = 2 * Xs**2 * Pt[:,1]/Vs_right**2
+        
+        return np.c_[Rc_left, Rc_right]
+    
     def front_face_Rc(self, Is=[+1,-1,-1,+1]):
         """
         (Ideal) front-face coupling resistances
@@ -860,6 +1039,19 @@ class WestIcrhAntenna():
         - Pt is the transmitted (coupled) power
         - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
         
+        Warning
+        -------
+        Pay attention to the port indexing! 
+        `Is` is assumed with the following order:
+            [1] [2]
+            [3] {4}
+        which is the one sued in HFSS or in TOPICA models,            
+        
+        However, the indexing order of voltages probes and capacitors is:
+            [1] [3]
+            [2] {4}
+        (both view from the rear of the antenna)
+        
         Parameters
         ----------
         Is : list or array (complex)
@@ -871,9 +1063,19 @@ class WestIcrhAntenna():
         V = self.antenna.z @ Is
         Prf = 0.5 * V @ Is
         
-        I_left_avg = np.sqrt(np.abs(Is[0])**2 + np.abs(Is[1])**2)
-        I_right_avg = np.sqrt(np.abs(Is[2])**2 + np.abs(Is[3])**2)
+        sum_I_left_avg_square = np.abs(Is[0])**2 + np.abs(Is[2])**2
+        sum_I_right_avg_square = np.abs(Is[1])**2 + np.abs(Is[3])**2
         
-        Rc_left = 2*Prf.real/I_left_avg**2
-        Rc_right = 2*Prf.real/I_right_avg**2
+        Rc_left = 2*Prf.real/sum_I_left_avg_square
+        Rc_right = 2*Prf.real/sum_I_right_avg_square
         return np.c_[Rc_left, Rc_right]
+    
+    # def ideal_response(self, power, phase, Cs=None):
+        
+        
+    #     Z_T = self.Z_T(power, phase, Cs=Cs)[idx_f_match,0].real
+    #     alpha = rcs / Rcs_med[5,0]
+    #     k = Z_T / Rcs_med[5,0]
+
+    #     rcs = np.linspace(0.05, 1, 101)
+    #     ax.plot(rcs, (2*k*alpha)/(alpha**2 + 2*k - 1), '--', color='b', alpha=0.5)
