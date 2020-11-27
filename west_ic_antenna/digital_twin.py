@@ -12,7 +12,7 @@ import ipywidgets as widgets
 import skrf as rf
 import numpy as np
 import matplotlib.pyplot as plt
-from IPython.display import display, clear_output, Markdown
+from IPython.display import clear_output
 from . antenna import WestIcrhAntenna
 
 class DigitalTwin(widgets.HBox):
@@ -136,7 +136,7 @@ class DigitalTwin(widgets.HBox):
                 Cs = [C1.value, C2.value, C3.value, C4.value]
                 if match_type.value == 'Left Side only':
                     print('Searching for a match point left side')
-                    Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6, 
+                    Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6,
                                                     side='left', solution_number=int(match_sol.value))
                     Cs[0] = Cs_sol[0]
                     Cs[1] = Cs_sol[1]
