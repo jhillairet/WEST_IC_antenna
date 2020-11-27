@@ -39,9 +39,15 @@ class WestIcrhAntenna():
         front_face: str or skrf.Network, optional
             str: path to the Touchstone file of the antenna front face. Default is None (Vacuum case). 
             NB: the Frequency object should be compatible with this file. 
+
+        Remarks
+        --------
+        front face ports are defined as (view from behind, ie from torus hall):
             
+            port1  port2
+            port3  port4
             
-        Capacitor names are defined as (view from behind the antenna, ie from torus hall): 
+        Capacitor names are defined as (view from behind the antenna): 
         
                 C1  C3
                 C2  C4
@@ -233,8 +239,8 @@ class WestIcrhAntenna():
             [(capa_C4, 0), (self.bridge_right, 2)],
             [(self.bridge_left, 0), (self.windows_impedance_transformer_left, 1)],
             [(self.bridge_right, 0), (self.windows_impedance_transformer_right, 1)],
-            # [(self.windows_impedance_transformer_left, 0), (self.port_left, 0)],
-            # [(self.windows_impedance_transformer_right, 0),  (self.port_right, 0)],
+            # [(self.windows_impedance_transformer_left, 0), (self.port_left, 0)],  # no stub
+            # [(self.windows_impedance_transformer_right, 0),  (self.port_right, 0)],  # no stub
             [(self.windows_impedance_transformer_left, 0), (self.service_stub_left, 1)],
             [(self.service_stub_left, 0), (self.port_left, 0)],
             [(self.windows_impedance_transformer_right, 0), (self.service_stub_right, 1)],
