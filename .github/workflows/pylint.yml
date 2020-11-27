@@ -2,21 +2,21 @@ name: Pylint
 
 on: [push]
 
-jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pylint
-    - name: Analysing the code with pylint
-      run: |
-        pylint `ls -R|grep .py$|xargs`
+steps:
+  - uses: actions/checkout@v1
+  - uses: ricardochaves/python-lint@v1.3.0
+    with:
+      python-root-list: "python_alelo tests"
+      use-pylint: false
+      use-pycodestyle: true
+      use-flake8: true
+      use-black: false
+      use-mypy: false
+      use-isort: false
+      extra-pylint-options: ""
+      extra-pycodestyle-options: ""
+      extra-flake8-options: ""
+      extra-black-options: ""
+      extra-mypy-options: ""
+      extra-isort-options: ""
+      
