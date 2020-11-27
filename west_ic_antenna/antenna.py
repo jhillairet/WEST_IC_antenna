@@ -6,9 +6,10 @@ WEST ICRH Antenna RF Model
 
 """
 import os
+import scipy
 import skrf as rf
 import numpy as np
-import scipy as sp
+
 
 # #### Default parameters ####
 here = os.path.dirname(os.path.abspath(__file__))
@@ -396,7 +397,7 @@ class WestIcrhAntenna():
             # elif solution_number == 2:
             #     C0 = [30, 120]
 
-            sol = sp.optimize.minimize(self._optim_fun_one_side, C0,
+            sol = scipy.optimize.minimize(self._optim_fun_one_side, C0,
                                           args=(f_match, side, z_match),
                                           constraints=const, method='SLSQP', #options={'ftol':1e-5},
                                           )
