@@ -37,7 +37,7 @@ REQUIRES_PYTHON = '>=3.6.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'scikit-rf', 'numpy', 'scipy', 'matplotlib', 'tqdm', 'pandas' 
+    'scikit-rf', 'numpy', 'scipy', 'matplotlib', 'tqdm', 'pandas' , 'ipympl'
 ]
 
 # What packages are optional?
