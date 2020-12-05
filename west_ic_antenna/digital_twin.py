@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from . antenna import WestIcrhAntenna
+from IPython.core.debugger import set_trace
 
 class DigitalTwin(widgets.HBox):
 
@@ -27,22 +28,79 @@ class DigitalTwin(widgets.HBox):
                                  continuous_update=False)
         C2 = widgets.FloatSlider(value=47.38, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        C3 = widgets.FloatSlider(value=120, min=30.0, max=120.0, step=1e-4,
+        C3 = widgets.FloatSlider(value=49.11, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        C4 = widgets.FloatSlider(value=120, min=30.0, max=120.0, step=1e-4,
+        C4 = widgets.FloatSlider(value=47.56, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        capas = widgets.HBox([widgets.VBox([widgets.Box([widgets.Label('C1: '), C1]),
-                                            widgets.Box([widgets.Label('C2: '), C2])]),
-                              widgets.VBox([widgets.Box([widgets.Label('C3: '), C3]),
-                                            widgets.Box([widgets.Label('C4: '), C4])])
+
+        def capa_plus(clicked_button): 
+            eval(clicked_button.name, 
+                {'C1': C1, 'C2': C2, 'C3': C3, 'C4': C4}).value += 0.1
+                
+        def capa_minus(clicked_button):
+            eval(clicked_button.name, 
+                {'C1': C1, 'C2': C2, 'C3': C3, 'C4': C4}).value -= 0.1
+            
+        def plus_minus_button(name, sign):
+            '''
+            Generic Button Constructor
+
+            Parameters
+            ----------
+            name : str
+                Button name 
+            sign : str
+                'plus' of 'minus'
+
+            Returns
+            -------
+            button : ipywidgets.widgets.Button
+                + or - Button
+
+            '''
+            if sign == 'plus':
+                tooltip = '+ 0.1 pF'
+                icon = 'plus'
+            elif sign == 'minus':
+                tooltip = '- 0.1 pF'
+                icon = 'minus'                
+            
+            button = widgets.Button(
+                description='', disabled=False,
+                button_style='', tooltip=tooltip,
+                icon=icon, layout=widgets.Layout(width='30px')
+            )
+            button.name = name
+            
+            if sign == 'plus':
+                button.on_click(capa_plus)
+            elif sign == 'minus':
+                button.on_click(capa_minus)
+            
+            return button
+            
+        C1_minus = plus_minus_button('C1', 'minus')
+        C1_plus = plus_minus_button('C1', 'plus')
+        C2_minus = plus_minus_button('C2', 'minus')
+        C2_plus = plus_minus_button('C2', 'plus')
+        C3_minus = plus_minus_button('C3', 'minus')
+        C3_plus = plus_minus_button('C3', 'plus')
+        C4_minus = plus_minus_button('C4', 'minus')
+        C4_plus = plus_minus_button('C4', 'plus')
+        
+        capas = widgets.HBox([widgets.VBox([widgets.Box([widgets.Label('C1: '), C1, C1_minus, C1_plus]),
+                                            widgets.Box([widgets.Label('C2: '), C2, C2_minus, C2_plus])]),
+                              widgets.VBox([widgets.Box([widgets.Label('C3: '), C3, C3_minus, C3_plus]),
+                                            widgets.Box([widgets.Label('C4: '), C4, C4_minus, C4_plus])]),
                              ])
 
         # excitation widgets
-        side = widgets.Dropdown(options=[('Left Side only', 1), ('Right Side only', 2), ('Both Sides', 3)], value=1, description='Side:')
+        power_left = widgets.FloatSlider(description='Left Left Fwd Power [kW]:', value=10, min=0, max=1500, step=1, continuous_update=False)
+        power_right = widgets.FloatSlider(description='Right Side Fwd Power [kW]:', value=10, min=0, max=1500, step=1, continuous_update=False)  
         phase_rel = widgets.FloatSlider(value=180, min=0, max=360, step=1,
                                         continuous_update=False)
         excitation = widgets.VBox([
-            widgets.Box([widgets.Label('Power from:'), side]),
+            widgets.HBox([power_left, power_right]),
             widgets.Box([widgets.Label('Phase: '), phase_rel])
             ])
 
@@ -53,9 +111,43 @@ class DigitalTwin(widgets.HBox):
         match_sol = widgets.RadioButtons(options=['1', '2'])
         match_button = widgets.Button(description='Match', disabled=False,
                                button_style='', tooltip='Click me', icon='check')
+
+        # frequency widgets
+        front_face_vacuum = '../west_ic_antenna/data/Sparameters/front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p'
+        front_face_aquarium ='../west_ic_antenna/data/Sparameters/front_faces/aquarium/HFSS/Epsr_55MHz/WEST_ICRH_front_face_with_aquarium_Daq00cm.s4p'
+        front_face_plasma = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Hmode_LAD6.s4p'
+        front_face_plasma_Lmode1 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile1.s4p'
+        front_face_plasma_Lmode2 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile2.s4p'
+        front_face_plasma_Lmode3 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile3.s4p'
+        front_face_plasma_Lmode4 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile4.s4p'
+        front_face_plasma_Lmode5 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile5.s4p'
+        front_face_plasma_Lmode6 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile6.s4p'
+        front_face_plasma_Lmode7 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile7.s4p'
+        front_face_plasma_Lmode8 = '../west_ic_antenna/data/Sparameters/front_faces/TOPICA/S_TSproto12_55MHz_Profile8.s4p'
+
+        front_face = widgets.Dropdown(
+            options=[('Vacuum', front_face_vacuum),
+                     ('Aquarium', front_face_aquarium),
+                     ('Plasma', front_face_plasma),
+                     ('L-mode 1', front_face_plasma_Lmode1),
+                     ('L-mode 2', front_face_plasma_Lmode2),
+                     ('L-mode 3', front_face_plasma_Lmode3),
+                     ('L-mode 4', front_face_plasma_Lmode4),
+                     ('L-mode 5', front_face_plasma_Lmode5),
+                     ('L-mode 6', front_face_plasma_Lmode6),
+                     ('L-mode 7', front_face_plasma_Lmode7),
+                     ('L-mode 8', front_face_plasma_Lmode8),
+                     ],
+
+            value=front_face_vacuum,
+            description='Front Face:',
+            disabled=False,
+        )
+
         out_matching = widgets.Output()
 
         matching = widgets.VBox([
+            widgets.Box([widgets.Label('Front Face:'), front_face]),
             widgets.Box([widgets.Label('Match frequency:'), match_freq]),
             widgets.Box([widgets.Label('Solution type:'), match_sol]),
             match_type,
@@ -63,9 +155,9 @@ class DigitalTwin(widgets.HBox):
             out_matching
         ])
 
-        # frequency widgets
+
         frequency_range = widgets.FloatRangeSlider(
-            value=[50, 60],
+            value=[53, 57],
             min=30.0,
             max=70.0,
             step=0.1,
@@ -84,12 +176,15 @@ class DigitalTwin(widgets.HBox):
         ])
 
         # Init the figure
-        fig, axes = plt.subplots(2, 1, sharex=True, figsize=(8,4));
-        [a.set_ylim(-30, 2) for a in axes]
+        fig, axes = plt.subplots(5, 1, sharex=True, figsize=(6,8));
+        [a.set_ylim(-30, 2) for a in axes[:1]]
         [a.grid(True) for a in axes]
-        axes[0].set_ylabel('$S_{ii}$')
-        axes[1].set_ylabel('$S_{act,i}$')
-        axes[1].set_xlabel('Frequency [MHz]')
+        axes[0].set_ylabel('$S_{ii}$ [dB]')
+        axes[1].set_ylabel('$S_{act,i}$ [dB]')
+        axes[2].set_ylabel('Voltage [kV]')
+        axes[3].set_ylabel('Currents [A]')
+        axes[4].set_ylabel('Phase [deg]')
+        axes[-1].set_xlabel('Frequency [MHz]')
         fig.subplots_adjust(hspace=0)
 
         antenna = WestIcrhAntenna()
@@ -100,40 +195,53 @@ class DigitalTwin(widgets.HBox):
                                 stop=frequency_range.value[1],
                                 npoints=frequency_npoints.value,
                                 unit='MHz')
-            return WestIcrhAntenna(frequency=freq)
+            Cs = [C1.value, C2.value, C3.value, C4.value]
+
+            return WestIcrhAntenna(frequency=freq, front_face=front_face.value, Cs=Cs)
 
         def plot_s(change):
             antenna = init_antenna([])
             antenna.Cs = [C1.value, C2.value, C3.value, C4.value]
-            if side.value == 1:
-                power = [1, 0]
-            elif side.value == 2:
-                power = [0, 1]
-            else:
-                power = [1, 1]
+            power = [power_left.value*1e3, power_right.value*1e3]
             phase = [0, np.deg2rad(phase_rel.value)]
 
             # Ignore Division per zero warning occuring in s_act
             with np.errstate(divide='ignore'):
                 s_act = antenna.s_act(power, phase)
                 s = antenna.circuit().s_external
+                Vs = antenna.voltages(power, phase)
+                Is = antenna.currents(power, phase)
 
             """Remove old lines from plot and plot new ones"""
-            [l.remove() for l in axes[0].lines]
-            [l.remove() for l in axes[1].lines]
+            # S11 and S22
+            [[l.remove() for l in ax.lines] for ax in axes]
             axes[0].plot(antenna.f_scaled, 20*np.log10(np.abs(s[:,0,0])), color='C0')
             axes[0].plot(antenna.f_scaled, 20*np.log10(np.abs(s[:,1,1])), color='C1')
+            # active S parameters
             axes[1].plot(antenna.f_scaled, 20*np.log10(np.abs(s_act[:,0])), color='C0')
             axes[1].plot(antenna.f_scaled, 20*np.log10(np.abs(s_act[:,1])), color='C1')
+            # voltages and currents
+            axes[2].plot(antenna.f_scaled, np.abs(Vs))
+            axes[3].plot(antenna.f_scaled, np.abs(Is))  
+            axes[4].plot(antenna.f_scaled, (np.rad2deg(np.angle(Vs[:,2])) - np.rad2deg(np.angle(Vs[:,0])))%360)
+            axes[4].plot(antenna.f_scaled, (np.rad2deg(np.angle(Vs[:,3])) - np.rad2deg(np.angle(Vs[:,1])))%360)
+            
+            axes[2].legend(('V1', 'V2', 'V3', 'V4'), ncol=4)
+            axes[3].legend(('I1', 'I2', 'I3', 'I4'), ncol=4)
+            axes[4].legend(('Arg(V3-V1)', 'Arg(V2-V4)'), ncol=2)
+            
             [a.axvline(match_freq.value, ls='--', color='k') for a in axes]
+        
             axes[0].set_xlim(left=frequency_range.value[0], right=frequency_range.value[1])
+
 
         # match the antenna
         def match(_):
             with out_matching:
+                antenna = init_antenna([])
+                Cs = [C1.value, C2.value, C3.value, C4.value]
                 # what happens when we press the button
                 clear_output()
-                Cs = [C1.value, C2.value, C3.value, C4.value]
                 if match_type.value == 'Left Side only':
                     print('Searching for a match point left side')
                     Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6,
@@ -167,10 +275,12 @@ class DigitalTwin(widgets.HBox):
         C2.observe(plot_s)
         C3.observe(plot_s)
         C4.observe(plot_s)
-        side.observe(plot_s)
+        power_left.observe(plot_s)
+        power_right.observe(plot_s)
         phase_rel.observe(plot_s)
         frequency_range.observe(plot_s)
         frequency_npoints.observe(plot_s)
+        front_face.observe(plot_s)
 
         # setting the tab windows
         tab = widgets.Tab()
@@ -178,7 +288,7 @@ class DigitalTwin(widgets.HBox):
         tab.set_title(0, 'Capacitors')
         tab.set_title(1, 'Excitation')
         tab.set_title(2, 'Matching')
-        tab.set_title(3, 'Frequency Range')
+        tab.set_title(3, 'Frequency & front face')
 
         plot_s([])  # show something at the startup
         # tab  # must be last
