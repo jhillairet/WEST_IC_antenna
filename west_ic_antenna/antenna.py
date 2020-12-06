@@ -64,7 +64,10 @@ class WestIcrhAntenna():
         '''
         self._frequency = frequency or rf.Network(DEFAULT_BRIDGE).frequency
         self._Cs = Cs
-
+        
+        # display debug print?
+        self.DEBUG = False
+        
         # load networks
         _bridge = rf.Network(DEFAULT_BRIDGE)
 
@@ -340,6 +343,53 @@ class WestIcrhAntenna():
         r = (Z_re - np.real(z_match))**2 + (Z_im - np.imag(z_match))**2
         return r
 
+    
+    def _optim_fun_both_sides(self, Cs, f_match=55e6, z_match=[29.89+0j, 29.89+0j], power=[1,1], phase=[0,np.pi]):
+        '''
+        Optimisation function to match both antenna sides.
+        
+        Optimization is made for active Z parameters, that is taking into account the antenna excitation.
+
+        Parameters
+        ----------
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+        f_match: float, optional
+            match frequency in [Hz]. Default is 55 MHz.
+        z_match: array of complex, optional
+            antenna feeder characteristic impedance to match on. Default is [30,30] ohm 
+        power : list or array
+            Input power at external ports in Watts [W]. Default is [1,1] W.
+        phase : list or array
+            Input phase at external ports in radian [rad]. Default is dipole [0,pi] rad.
+
+        Returns
+        -------
+        r: float
+            Residuals of Z_act - Z_match
+            r = (Z_act_left_re - np.real(z_match[0]))**2 + (Z_act_left_im - np.imag(z_match[0]))**2 +
+                (Z_act_right_re - np.real(z_match[1]))**2 + (Z_act_right_im - np.imag(z_match[1]))**2
+        '''
+        # Create Antenna network for the capacitances Cs
+        #z_act = self.z_act(power, phase, Cs=list(Cs))
+        s_act = self.s_act(power, phase, Cs=list(Cs))
+        
+        # retrieve Z and compare to objective
+        index_f_match = np.argmin(np.abs(self.f - f_match))
+
+        #Z_act_left_re = np.real(z_act[index_f_match,0])
+        #Z_act_left_im = np.imag(z_act[index_f_match,0])
+        #Z_act_right_re = np.real(z_act[index_f_match,1])
+        #Z_act_right_im = np.imag(z_act[index_f_match,1])
+        
+        #r = ((Z_act_left_re - np.real(z_match[0])) + (Z_act_left_im - np.imag(z_match[0])))**2 \
+        #    * ((Z_act_right_re - np.real(z_match[1])) + (Z_act_right_im - np.imag(z_match[1])))**2
+        
+        r = np.sqrt(np.sum(np.abs(s_act[index_f_match,:])**2))
+        
+        if self.DEBUG:
+            print(Cs, r)
+        return r
 
     def match_one_side(self, f_match=55e6, solution_number=1, side='left',
                        z_match=29.89+0j, decimals=None):
@@ -368,7 +418,7 @@ class WestIcrhAntenna():
 
         '''
         # creates an antenna circuit for single frequency only to speed-up calculations
-        freq_match = rf.Frequency.from_f(f_match, unit='Hz') #rf.Frequency(f_match, f_match, 1, unit='Hz')
+        freq_match = rf.Frequency(f_match, f_match, npoints=1, unit='Hz')
         self._antenna_match = WestIcrhAntenna(freq_match, front_face=self.antenna)
 
         # setup constraint optimization to force finding the requested solution
@@ -391,15 +441,9 @@ class WestIcrhAntenna():
                 elif C0[0] < C0[1] and solution_number == 2:
                     contin = False
 
-            # # starting points are opposite and already oriented toward the good solution
-            # if solution_number == 1:
-            #     C0 = [120, 30]
-            # elif solution_number == 2:
-            #     C0 = [30, 120]
-
             sol = scipy.optimize.minimize(self._optim_fun_one_side, C0,
                                           args=(f_match, side, z_match),
-                                          constraints=const, method='SLSQP', #options={'ftol':1e-5},
+                                          constraints=const, method='SLSQP',
                                           )
             # test if the solution found is the capacitor range
             success = sol.success
@@ -424,7 +468,7 @@ class WestIcrhAntenna():
         return Cs
 
     def match_both_sides_separately(self, f_match=55e6, solution_number=1,
-                                    z_match=29.89+0j, decimals=None):
+                                    z_match=[29.89+0j, 29.87+0j], decimals=None):
         """
         Match both sides separatly and returns capacitance values for each sides.
 
@@ -449,15 +493,95 @@ class WestIcrhAntenna():
             antenna 4 capacitances [C1, C2, C3, C4] in [pF].
 
         """
-        C_left = self.match_one_side(side='left', f_match=f_match, solution_number=solution_number, z_match=z_match, decimals=decimals)
-        C_right = self.match_one_side(side='right', f_match=f_match, solution_number=solution_number, z_match=z_match, decimals=decimals)
+        C_left = self.match_one_side(side='left', f_match=f_match, solution_number=solution_number, z_match=z_match[0], decimals=decimals)
+        C_right = self.match_one_side(side='right', f_match=f_match, solution_number=solution_number, z_match=z_match[1], decimals=decimals)
 
         C_match = [C_left[0], C_left[1], C_right[2], C_right[3]]
         return C_match
 
-    def match_both_sides(self, f_match=55e6, solution_number=1, z_match=[29.89+0j, 29.89+0j], decimals=None):
-        # TODO
-        pass
+    def match_both_sides(self, f_match=55e6, solution_number=1, z_match=[29.89+0j, 29.89+0j], decimals=None,
+                        power=[1,1], phase=[0, np.pi]):
+        '''
+        Match both sides at the same time for a given frequency target.
+        
+        Optimization is made for active Z parameters, that is taking into account the antenna excitation.
+                
+        Parameters
+        ----------
+        f_match: float, optional
+            match frequency in [Hz]. Default is 55 MHz.
+        solution_number: int, optional
+            1 or 2: 1 for C_top > C_lower or 2 for C_top < C_lower
+        z_match: array of complex, optional
+            antenna feeder characteristic impedance to match on. Default is 30 ohm
+        decimals : int, optional
+            Round the capacitances to the given number of decimals. Default is None (no rounding)
+        power : list or array
+            Input power at external ports in Watts [W]. Default is [1, 1] W.
+        phase : list or array
+            Input phase at external ports in radian [rad]. Defalt is dipole [0, pi] rad.
+
+        Returns
+        -------
+        Cs_match : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+
+        '''
+        # creates an antenna circuit for a single frequency only to speed-up calculations
+        freq_match = rf.Frequency(f_match, f_match, npoints=1, unit='Hz')
+        self._antenna_match = WestIcrhAntenna(freq_match, front_face=self.antenna)
+
+        # setup constraint optimization to force finding the requested solution
+        sol_sign = +1 if solution_number == 1 else -1
+        A = np.array([[1, 0, 0, 0], 
+                      [0, 1, 0, 0], 
+                      [0, 0, 1, 0], 
+                      [0, 0, 0, 1], 
+                      [sol_sign*-1, sol_sign*1, 0, 0], 
+                      [0, 0, sol_sign*-1, sol_sign*1],
+                     ])
+        lb = np.array([12, 12, 12, 12, -np.inf, -np.inf])
+        ub = np.array([150, 150, 150, 150, 0, 0])
+        const = scipy.optimize.LinearConstraint(A, lb, ub)
+        
+        
+        # initial guess from both side separately
+        print('Looking for individual solutions separately for 1st guess...')
+        C0 = self.match_both_sides_separately(f_match=f_match, solution_number=solution_number, 
+                                              z_match=z_match, decimals=decimals)
+
+        print('Searching for the active match point solution...')
+        success = False
+        while success == False:
+            #sol = scipy.optimize.minimize(self._optim_fun_both_sides, C0,
+            #                              args=(f_match, z_match, power, phase),
+            #                              constraints=const, method='SLSQP',
+            #                              options={'disp':True}
+            #                              )
+            sol = scipy.optimize.minimize(self._optim_fun_both_sides, C0,
+                                          args=(f_match, z_match, power, phase),
+                                          constraints=const, method='COBYLA',  
+                                          options={'disp':True}
+                                         )
+            # test if the solution found is the capacitor range
+            success = sol.success
+            if np.isclose(sol.x, 150).any() or \
+                np.isclose(sol.x, 12).any() or \
+                np.isclose(sol.x[0], sol.x[1]) or \
+                np.isclose(sol.x[2], sol.x[3]):
+                success = False
+                print('Wrong solution (out of range capacitor) ! Re-doing...')
+
+            print(success, f'solution #{solution_number}:', sol.x)
+
+        Cs = [sol.x[0], sol.x[1], sol.x[2], sol.x[3]]
+        
+        # round result to realistic values if requested
+        if decimals:
+            Cs = list(np.round(Cs, decimals=decimals))
+            print('Rounded result:', Cs)
+    
+        return Cs
 
     def optimum_frequency_index(self, power, phase, Cs=None):
         """

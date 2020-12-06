@@ -107,7 +107,7 @@ class DigitalTwin(widgets.HBox):
         # matching widgets
         match_freq = widgets.FloatSlider(min=40, max=65, value=55.5, step=1e-1,
                                         continuous_update=False)
-        match_type = widgets.RadioButtons(options=['Left Side only', 'Right Side only', 'Both Sides Separately'])
+        match_type = widgets.RadioButtons(options=['Left Side only', 'Right Side only', 'Both Sides Separately', 'Both Sides Simultaneously'])
         match_sol = widgets.RadioButtons(options=['1', '2'])
         match_button = widgets.Button(description='Match', disabled=False,
                                button_style='', tooltip='Click me', icon='check')
@@ -265,7 +265,15 @@ class DigitalTwin(widgets.HBox):
                     C2.value = Cs[1]
                     C3.value = Cs[2]
                     C4.value = Cs[3]
-
+                elif match_type.value == 'Both Sides Simultaneously':
+                    Cs_sol = antenna.match_both_sides(f_match=match_freq.value*1e6, solution_number=int(match_sol.value), 
+                                                     power=[power_left.value*1e3, power_right.value*1e3],
+                                                     phase=[0, np.deg2rad(phase_rel.value)])
+                    Cs = Cs_sol
+                    C1.value = Cs[0]
+                    C2.value = Cs[1]
+                    C3.value = Cs[2]
+                    C4.value = Cs[3]            
                 print(Cs)
                 plot_s([])
 
