@@ -176,7 +176,7 @@ class DigitalTwin(widgets.HBox):
         ])
 
         # Init the figure
-        fig, axes = plt.subplots(5, 1, sharex=True, figsize=(6,8));
+        fig, axes = plt.subplots(6, 1, sharex=True, figsize=(8,6));
         [a.set_ylim(-30, 2) for a in axes[:1]]
         [a.grid(True) for a in axes]
         axes[0].set_ylabel('$S_{ii}$ [dB]')
@@ -184,6 +184,9 @@ class DigitalTwin(widgets.HBox):
         axes[2].set_ylabel('Voltage [kV]')
         axes[3].set_ylabel('Currents [A]')
         axes[4].set_ylabel('Phase [deg]')
+        axes[5].set_ylabel('Phase [deg]')
+        
+        axes[5].set_ylim(-180, 180)
         axes[-1].set_xlabel('Frequency [MHz]')
         fig.subplots_adjust(hspace=0)
 
@@ -215,6 +218,10 @@ class DigitalTwin(widgets.HBox):
             """Remove old lines from plot and plot new ones"""
             # S11 and S22
             [[l.remove() for l in ax.lines] for ax in axes]
+            [[l.remove() for l in ax.lines] for ax in axes]            
+            [[l.remove() for l in ax.lines] for ax in axes]
+            [[l.remove() for l in ax.lines] for ax in axes]
+            
             axes[0].plot(antenna.f_scaled, 20*np.log10(np.abs(s[:,0,0])), color='C0')
             axes[0].plot(antenna.f_scaled, 20*np.log10(np.abs(s[:,1,1])), color='C1')
             # active S parameters
@@ -223,12 +230,16 @@ class DigitalTwin(widgets.HBox):
             # voltages and currents
             axes[2].plot(antenna.f_scaled, np.abs(Vs))
             axes[3].plot(antenna.f_scaled, np.abs(Is))  
-            axes[4].plot(antenna.f_scaled, (np.rad2deg(np.angle(Vs[:,2])) - np.rad2deg(np.angle(Vs[:,0])))%360)
-            axes[4].plot(antenna.f_scaled, (np.rad2deg(np.angle(Vs[:,3])) - np.rad2deg(np.angle(Vs[:,1])))%360)
+            axes[4].plot(antenna.f_scaled, (np.angle(Vs[:,2], deg=True) - np.angle(Vs[:,0], deg=True))%360)
+            axes[4].plot(antenna.f_scaled, (np.angle(Vs[:,3], deg=True) - np.angle(Vs[:,1], deg=True))%360)
+            axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,1]/Vs[:,0], deg=True)))
+            axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,2]/Vs[:,3], deg=True)))
+            
             
             axes[2].legend(('V1', 'V2', 'V3', 'V4'), ncol=4)
             axes[3].legend(('I1', 'I2', 'I3', 'I4'), ncol=4)
-            axes[4].legend(('Arg(V3-V1)', 'Arg(V2-V4)'), ncol=2)
+            axes[4].legend(('∠(V3/V1)', '∠(V4/V2)'), ncol=2)
+            axes[5].legend(('∠(V2/V1)', '∠(V4/V3)'), ncol=2)
             
             [a.axvline(match_freq.value, ls='--', color='k') for a in axes]
         
