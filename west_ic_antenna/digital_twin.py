@@ -176,7 +176,7 @@ class DigitalTwin(widgets.HBox):
         ])
 
         # Init the figure
-        fig, axes = plt.subplots(6, 1, sharex=True, figsize=(8,6));
+        fig, axes = plt.subplots(7, 1, sharex=True, figsize=(8,6));
         [a.set_ylim(-30, 2) for a in axes[:1]]
         [a.grid(True) for a in axes]
         axes[0].set_ylabel('$S_{ii}$ [dB]')
@@ -185,6 +185,7 @@ class DigitalTwin(widgets.HBox):
         axes[3].set_ylabel('Currents [A]')
         axes[4].set_ylabel('Phase [deg]')
         axes[5].set_ylabel('Phase [deg]')
+        axes[6].set_ylabel('Rc [Ohm]')
         
         axes[5].set_ylim(-180, 180)
         axes[-1].set_xlabel('Frequency [MHz]')
@@ -214,6 +215,7 @@ class DigitalTwin(widgets.HBox):
                 s = antenna.circuit().s_external
                 Vs = antenna.voltages(power, phase)
                 Is = antenna.currents(power, phase)
+                Rc = antenna.Rc(power, phase)
 
             """Remove old lines from plot and plot new ones"""
             # S11 and S22
@@ -234,12 +236,14 @@ class DigitalTwin(widgets.HBox):
             axes[4].plot(antenna.f_scaled, (np.angle(Vs[:,3], deg=True) - np.angle(Vs[:,1], deg=True))%360)
             axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,1]/Vs[:,0], deg=True)))
             axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,2]/Vs[:,3], deg=True)))
+            axes[6].plot(antenna.f_scaled, Rc)
             
             
             axes[2].legend(('V1', 'V2', 'V3', 'V4'), ncol=4)
             axes[3].legend(('I1', 'I2', 'I3', 'I4'), ncol=4)
             axes[4].legend(('∠(V3/V1)', '∠(V4/V2)'), ncol=2)
             axes[5].legend(('∠(V2/V1)', '∠(V4/V3)'), ncol=2)
+            axes[6].legend(('Left', 'Right'), ncol=2)
             
             [a.axvline(match_freq.value, ls='--', color='k') for a in axes]
         
