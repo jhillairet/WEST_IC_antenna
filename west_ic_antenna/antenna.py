@@ -10,7 +10,6 @@ import scipy
 import skrf as rf
 import numpy as np
 
-
 # #### Default parameters ####
 here = os.path.dirname(os.path.abspath(__file__))
 S_PARAMS_DIR = here+'/data/Sparameters/'
@@ -20,6 +19,8 @@ DEFAULT_IMPEDANCE_TRANSFORMER = S_PARAMS_DIR+'WEST_ICRH_Transf_Window_PumpHolePM
 DEFAULT_SERVICE_STUB = S_PARAMS_DIR+'WEST_ICRH_Stub_30to70MHz.s3p'
 # antenna front face data are interpolated on bridge's frequencies
 DEFAULT_FRONT_FACE = S_PARAMS_DIR+'front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p'
+# Optimal Impedance at T-junction
+Z_T_OPT = 2.89 - 0.17j
 
 class WestIcrhAntenna():
     def __init__(self, frequency=None, Cs=[50,50,50,50], front_face=None):
@@ -752,7 +753,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        Is : complex array (nbf,4)
+        Is : complex array (nb_f,4)
             Currents at antenna front face ports [I1, I2, I3, I4]
 
         Example
@@ -786,7 +787,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        Vs : complex array (nbf,4)
+        Vs : complex array (nb_f,4)
             Voltages at antenna front face ports [V1, V2, V3, V4]
 
         Example
@@ -835,7 +836,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        f_scaled : array
+        f_scaled : array (nb_f,)
             Antenna frequency band values in the Frequency unit
 
         '''
@@ -859,13 +860,12 @@ class WestIcrhAntenna():
             Input power at external ports in Watts [W]
         phase : list or array
             Input phase at external ports in radian [rad]
-
         Cs : list or array
             antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
 
         Returns
         -------
-        s_act : complex array
+        s_act : complex array (nb_f, 2)
             Active S-parameters
         '''
         Cs = Cs or self.Cs
@@ -896,7 +896,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        z_act : complex array
+        z_act : complex array (nb_f, 2)
             Active Z-parameters
         '''
         Cs = Cs or self.Cs
@@ -926,7 +926,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        vswr_act : complex array
+        vswr_act : complex array (nb_f,2)
             Active VSWR-parameters
 
         """
@@ -937,6 +937,7 @@ class WestIcrhAntenna():
         vswr_right = (1 + np.abs(s_act[:,1]))/(1 - np.abs(s_act[:,1]))
 
         return np.c_[vswr_left, vswr_right]
+
 
     def voltages(self, power, phase, Cs=None):
         """
@@ -953,7 +954,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        Vs : complex array (nbf,4)
+        Vs : complex array (nb_f,4)
             Voltages at antenna front face ports [V1, V2, V3, V4]
 
         Example
@@ -980,7 +981,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        Is : complex array (nbf,4)
+        Is : complex array (nb_f,4)
             Currents at antenna front face ports [I1, I2, I3, I4]
 
         Example
@@ -1007,7 +1008,7 @@ class WestIcrhAntenna():
 
         Returns
         -------
-        Z_T : complex array (nbf,2)
+        Z_T : complex array (nb_f,2)
             Impedance at the T-junction [Z_T_left, Z_T_right]
 
         Example
@@ -1198,12 +1199,213 @@ class WestIcrhAntenna():
         Rc_right = 2*Prf.real/sum_I_right_avg_square
         return np.c_[Rc_left, Rc_right]
 
-    # def ideal_response(self, power, phase, Cs=None):
 
+    def swit_abcd(self):
+        """
+        ABCD matrix of service Stub, Window and Impedance Transformer (aka "SWIT")
 
-    #     Z_T = self.Z_T(power, phase, Cs=Cs)[idx_f_match,0].real
-    #     alpha = rcs / Rcs_med[5,0]
-    #     k = Z_T / Rcs_med[5,0]
+        Returns
+        -------
+        a : np.array (nb_f,2,2)
+            ABCD matrix of the SWIT
 
-    #     rcs = np.linspace(0.05, 1, 101)
-    #     ax.plot(rcs, (2*k*alpha)/(alpha**2 + 2*k - 1), '--', color='b', alpha=0.5)
+        """
+        return self.windows_impedance_transformer.a
+    
+    def z_coupler(self, power, phase, Cs=None):
+        """
+        Input impedance at the bidirective coupler for a given excitation. 
+
+        Assume that the bidirective coupler is located just behind the RF window.
+        In reality, there is a piece of transmission line from the window to 
+        the couplern which depends of each sides of each antenna in WEST.
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+
+        Returns
+        -------
+        z_coupler : np.array (nb_f, 2)
+            Input impedance (left and right side) at the bidirective coupler for a given excitation. 
+
+        """
+        # TODO (?): include the piece of transmission line for each antenna? 
+        return self.z_act(power, phase, Cs=Cs)
+    
+    def z_T(self, power, phase, Cs=None):
+        """
+        Input impedance at the T-junction (input of the bridge) for a given excitation.
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+
+        Returns
+        -------
+        z_T : np.array (nb_f, 2)
+            Input impedances (left and right sides) at the T-junction for a given excitation.
+
+        """
+        # ABCD matrix of service Stub, Window and Impedance Transformer (aka "SWIT")
+        A = self.swit_abcd()  # shape (nb_f,2,2)
+        z_coupler = self.z_coupler(power, phase, Cs)  # shape (nb_f,2)
+        
+        # From ABCD matrix definition for SWIT:
+        # (V_coupler, I_coupler) = [A,B; C,D]*(V_T, -I_T)
+        # --> Z_T = (A12 -  A22 Z_coupler)/(A21 Z_coupler - A11)
+        z_T_left = (A[:,0,1] - A[:,1,1]*z_coupler[:,0])/(A[:,1,0]*z_coupler[:,0] - A[:,0,0])
+        z_T_right = (A[:,0,1] - A[:,1,1]*z_coupler[:,1])/(A[:,1,0]*z_coupler[:,1] - A[:,0,0])
+        return np.c_[z_T_left, z_T_right]
+
+    def error_signals(self, power, phase, Cs=None, z_T_target=Z_T_OPT):
+        """
+        Normalized Error Signals for left and right sides.
+        
+        Normalized Error signals is defined by:
+        
+        epsilon = (z_T_target - z_T)/z_T
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+        z_T_target : complex, optional
+            Desired target (Set Point) for the input impedance at T-junction. The default is 2.89-0.17j.
+
+        Returns
+        -------
+        epsilons : complex array (nb_f, 2)
+            Error signals for left and right sides
+        
+        """
+        z_T = self.z_T(power, phase, Cs)
+        return (z_T_target - z_T)/z_T
+    
+    def _T(self, k=5, S=-1, alpha=45, Kri=1):
+        """
+        Feedback Loop Matrix T
+        
+        C_match = C + T * epsilon 
+
+        Parameters
+        ----------
+        k : float, optional
+            Gain. The default is 5.
+        S : int, optional
+            Solution choice. The default is -1 for solution 1, +1 for solution 2.
+        alpha : float, optional
+            Solution choice. The default is 45 for solution 1, -45 for solution 2.
+        Kri : float, optional
+            Ratio of real to imag relative weight. The default is 1.
+
+        Returns
+        -------
+        T : array (2,2)
+            Feedback Loop Matrix.
+
+        """       
+        T = np.array([[-S*np.cos(np.deg2rad(alpha)), S*Kri*np.sin(np.deg2rad(alpha))],
+                      [-np.sin(np.deg2rad(alpha)), -Kri*np.cos(np.deg2rad(alpha))]])
+        return T
+    
+    def capacitor_predictor(self, power, phase, Cs, z_T_target=Z_T_OPT, solution_number=1, K=1):
+        """
+        Return a capacitance set toward matching.
+        
+        The predictor does not return the final optimum values but only 
+        a set which goes toward the solution. Hence, this function should
+        be re-itered until its converges (if so).
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+        z_T_target : complex, optional
+            Desired target (Set Point) for the input impedance at T-junction. The default is 2.89-0.17j.
+        solution_number : int
+            Desired solution. 1 for C_top > C_bot and 2 for the opposite. 
+        K : float
+            Gain
+
+        Returns
+        -------
+        C_left : np.array (nb_f, 2)
+            Left side capacitances  (top, bottom)
+        C_right : np.array (nb_f, 2)
+            Right side capacitances  (top, bottom)
+
+        """
+        C_left_current = np.array(Cs[:2])
+        C_right_current = np.array(Cs[2:])
+        
+        # D is the sign of the elements of the Jacobian calculated
+        # for C - C_SP  (from Taylor theorem)
+        if solution_number == 1:
+            D = K*np.array([[-1, -1],
+                            [-1, +1]])
+        elif solution_number == 2:
+            D = K*np.array([[-1, -1],
+                            [+1, -1]])
+
+        # relative error of Z_T vs set point Z_T_SP (desired value)
+        epsilons = self.error_signals(power, phase, Cs, z_T_target)
+        
+        # (2,2)@(2,nb_f)=(2,nb_f)
+        # Note a sign difference in front of D, since here it's not C - C_SP
+        # but the error signals which is (Z_T_SP - ZT)/Z_T
+        C_left = C_left_current + (D @ np.c_[np.real(epsilons[:,0]), np.imag(epsilons[:,0])].T).T
+        C_right = C_right_current + (D @ np.c_[np.real(epsilons[:,1]), np.imag(epsilons[:,1])].T).T
+        
+        return C_left, C_right        
+    
+    def capacitor_velocities(self, power, phase, Cs=None, z_T_target=Z_T_OPT, K=1):
+        """
+        Velocity requests toward matching point.   
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+        z_T_target : complex, optional
+            Desired target (Set Point) for the input impedance at T-junction. The default is 2.89-0.17j.
+        K : float, optional
+            Gain. Default is 1.
+
+        Returns
+        -------
+        v_left: np.array (nb_f, 2)
+            Left side velocities (v_top, v_bot)
+        v_right: np.array (nb_f, 2)
+            Right side velocities (v_top, v_bot)            
+
+        """
+        T = self._T()
+        epsilons = self.error_signals(power,phase,Cs,z_T_target)
+        # (2,2)@(2,nb_f)=(2,nb_f)
+        v_left = K * T @ np.c_[np.real(epsilons[:,0]), np.imag(epsilons[:,0])].T
+        v_right = K * T @ np.c_[np.real(epsilons[:,1]), np.imag(epsilons[:,1])].T
+        
+        return v_left.T, v_right.T  # (nb_f, 2)
