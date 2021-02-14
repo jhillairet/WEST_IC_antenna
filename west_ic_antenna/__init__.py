@@ -1,4 +1,4 @@
-__version__ = '0.4'
+__version__ = '0.5'
 
 from .antenna import *
 from .topica import TopicaResult

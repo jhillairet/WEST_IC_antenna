@@ -1323,7 +1323,7 @@ class WestIcrhAntenna():
                       [-np.sin(np.deg2rad(alpha)), -Kri*np.cos(np.deg2rad(alpha))]])
         return T
     
-    def capacitor_predictor(self, power, phase, Cs, z_T_target=Z_T_OPT, solution_number=1, K=1):
+    def capacitor_predictor(self, power, phase, Cs, z_T_target=Z_T_OPT, solution_number=1, K=0.7):
         """
         Return a capacitance set toward matching.
         
@@ -1343,8 +1343,8 @@ class WestIcrhAntenna():
             Desired target (Set Point) for the input impedance at T-junction. The default is 2.89-0.17j.
         solution_number : int
             Desired solution. 1 for C_top > C_bot and 2 for the opposite. 
-        K : float
-            Gain
+        K : float, optional
+            Gain. Default value: 0.7. Smaller value leads to higher number of iteration.
 
         Returns
         -------
