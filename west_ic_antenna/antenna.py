@@ -1409,3 +1409,53 @@ class WestIcrhAntenna():
         v_right = K * T @ np.c_[np.real(epsilons[:,1]), np.imag(epsilons[:,1])].T
         
         return v_left.T, v_right.T  # (nb_f, 2)
+    
+    @classmethod
+    def TOPICA_front_face(self, Rc: float, mode: str = 'L') -> rf.Network:
+        """
+        Return a TOPICA front-face rf.Network interpolated from the L or H mode data
+
+        Parameters
+        ----------
+        Rc : float
+            Desired interpolated coupling resistance value. Rc must be within
+            the interval of possible values, which depends of the mode:
+            L-mode plasma front-face have Rc in [1, 2.91]
+            H-mode plasma front-face have Rc in [0.39, 1.71]
+        
+        mode : str, optional
+            'L' or 'H' mode profile. The default is 'L'.
+
+
+
+        Returns
+        -------
+        interpolated_front_face : rf.Network 
+            Network of the TOPICA front-face
+            
+        Example
+        -------
+        >>> plasma = WestIcrhAntenna.TOPICA_front_face(Rc=1, mode='L')
+
+        """
+        if mode == 'L':
+            ntwks = [rf.Network(filename) for filename in [S_PARAMS_DIR+f'/front_faces/TOPICA/S_TSproto12_55MHz_Profile{idx}.s4p' for idx in range(1,9,1)]]
+            # Ideal coupling resistance for each of them
+            Rcs = [1.0, 1.34, 1.57, 1.81, 2.05, 2.45, 2.65, 2.91] 
+        elif mode =='H':
+            ntwks = [rf.Network(S_PARAMS_DIR+'/front_faces/TOPICA/S_TSproto12_55MHz_Hmode_LAD6.s4p'),
+                       rf.Network(S_PARAMS_DIR+'/front_faces/TOPICA/S_TSproto12_55MHz_Hmode_LAD6-2.5cm.s4p'),
+                       rf.Network(S_PARAMS_DIR+'/front_faces/TOPICA/S_TSproto12_55MHz_Hmode_LAD6-5cm.s4p')]
+            Rcs = [0.39, 0.80, 1.71]
+        
+        ntw_set = rf.NetworkSet(ntwks)
+
+        # interpolate if desired Rc is within the Rcs        
+        if Rcs[0] <= Rc <= Rcs[-1]:
+            return ntw_set.interpolate_from_network(Rcs, Rc, interp_kind='quadratic')
+        # otherwise 
+        else:
+            raise ValueError('Desired Rc should be within possible value (cf. help)')
+            
+            
+            
