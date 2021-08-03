@@ -2,7 +2,12 @@
 """
 WEST ICRH Antenna RF Model
 
-@author: Julien Hillairet
+.. module:: west_ic_antenna.antenna
+
+.. autosummary::
+    :toctree:
+    
+    WestIcrhAntenna
 
 """
 import os
@@ -1267,8 +1272,8 @@ class WestIcrhAntenna:
         
         where:
 
-        - Pt is the transmitted (coupled) power
-        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
+        * Pt is the transmitted (coupled) power
+        * Is is the current average :math:`I_s^2 = |I_{top}|^2 + |I_{bot}|^2`
 
         Parameters
         ----------
@@ -1310,8 +1315,8 @@ class WestIcrhAntenna:
         
         where:
 
-        - Pt is the transmitted (coupled) power
-        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
+        * Pt is the transmitted (coupled) power
+        * Is is the current average :math:`I_s^2 = |I_{top}|^2 + |I_{bot}|^2`
 
         Parameters
         ----------
@@ -1360,8 +1365,8 @@ class WestIcrhAntenna:
 
         where:
 
-        - Pt is the transmitted (coupled) power
-        - Is is the current average Is^2 = |I_top|^2 + |I_bot|^2
+        * Pt is the transmitted (coupled) power
+        * Is is the current average :math:`I_s^2 = |I_{top}|^2 + |I_{bot}|^2`
 
         Warning
         -------

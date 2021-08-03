@@ -7,6 +7,13 @@ WEST ICRH Antenna RF Model Digital Twin
 This class shall be used in the frame of a jupyter notebook
 in order to get the interactive functionalities
 
+.. module:: west_ic_antenna.digital_twin
+
+.. autosummary::
+    :toctree:
+    
+    DigitalTwin
+
 """
 import ipywidgets as widgets
 import skrf as rf

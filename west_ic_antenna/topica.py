@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec 10 21:00:22 2013
+.. module:: west_ic_antenna.topica
 
-@author: hash
+.. autosummary::
+    :toctree:
+    
+    TopicaResult
 """
 import numpy as np
 import skrf as rf
