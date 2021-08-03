@@ -654,6 +654,11 @@ class WestIcrhAntenna:
         print("Searching for the active match point solution...")
         success = False
         while success == False:
+            print("Reducing search range to +/- 2pF around individual solutions")
+            lb = np.array([C0[0]-2, C0[1]-2, C0[2]-2, C0[3]-2, -np.inf, -np.inf])
+            ub = np.array([C0[0]+2, C0[1]+2, C0[2]+2, C0[3]+2, 0, 0])
+            const = scipy.optimize.LinearConstraint(A, lb, ub)
+
             # sol = scipy.optimize.minimize(self._optim_fun_both_sides, C0,
             #                              args=(f_match, z_match, power, phase),
             #                              constraints=const, method='SLSQP',
