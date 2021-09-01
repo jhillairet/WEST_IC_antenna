@@ -6,14 +6,10 @@
 WEST ICRH Antenna RF Model's documentation
 ==========================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-Documentation
-=============
+API Documentation
+=================
     
-.. toctree::
+.. toctree:: generated/
     :maxdepth: 2
     
     antenna

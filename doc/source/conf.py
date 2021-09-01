@@ -13,7 +13,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
-sys.path.insert(0, os.path.abspath('../../../scikit-rf'))
 sys.setrecursionlimit(1500)
 import sphinx_rtd_theme
 
@@ -35,11 +34,10 @@ release = '0.1'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon', 
     'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -65,6 +63,10 @@ html_static_path = ['_static']
 
 # Autodoc settings
 autodoc_typehints = "description"
+
+# Autosummary settings
+# generate stub pages for each. It is enabled by default.
+autosummary_generate = True
 
 # Napoleon settings
 napoleon_google_docstring = False
