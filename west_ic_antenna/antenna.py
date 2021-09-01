@@ -5,7 +5,7 @@ WEST ICRH Antenna RF Model
 .. module:: west_ic_antenna.antenna
 
 .. autosummary::
-    :toctree:
+    :toctree: generated/
     
     WestIcrhAntenna
 
@@ -53,7 +53,7 @@ class WestIcrhAntenna:
         Default is [50,50,50,50] [pF]
 
     front_face: str or :class:`skrf.network.Network`, optional
-        str: path to the Touchstone file of the antenna front face.
+        path to the Touchstone file of the antenna front face.
         Default is None (Vacuum case).
         If the frequency band of the front_face Network is a unique point,
         as typically for TOPICA results for example, the s-parameters
@@ -721,9 +721,10 @@ class WestIcrhAntenna:
         print("Searching for the active match point solution...")
         success = False
         while success == False:
-            print("Reducing search range to +/- 2pF around individual solutions")
-            lb = np.array([C0[0]-2, C0[1]-2, C0[2]-2, C0[3]-2, -np.inf, -np.inf])
-            ub = np.array([C0[0]+2, C0[1]+2, C0[2]+2, C0[3]+2, 0, 0])
+            delta_C = 2
+            print(f"Reducing search range to +/- {delta_C}pF around individual solutions")
+            lb = np.array([C0[0]-delta_C, C0[1]-delta_C, C0[2]-delta_C, C0[3]-delta_C, -np.inf, -np.inf])
+            ub = np.array([C0[0]+delta_C, C0[1]+delta_C, C0[2]+delta_C, C0[3]+delta_C, 0, 0])
             const = scipy.optimize.LinearConstraint(A, lb, ub)
 
             # sol = scipy.optimize.minimize(self._optim_fun_both_sides, C0,
@@ -732,12 +733,11 @@ class WestIcrhAntenna:
             #                              options={'disp':True}
             #                              )
             sol = scipy.optimize.minimize(
-                self._optim_fun_both_sides,
-                C0,
+                self._optim_fun_both_sides, C0,
                 args=(f_match, z_match, power, phase),
                 constraints=const,
                 method="COBYLA",
-                options={"disp": True},
+                options={"disp": True, 'rhobeg': 0.1},
             )
             # test if the solution found is the capacitor range
             success = sol.success
