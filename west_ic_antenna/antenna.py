@@ -661,6 +661,7 @@ class WestIcrhAntenna:
         decimals: Union[int, None] = None,
         power: NumberLike = [1, 1],
         phase: NumberLike = [0, np.pi],
+        opt_method: str = 'COBYLA'
     ) -> NumberLike:
         """
         Match both sides at the same time for a given frequency target.
@@ -682,6 +683,8 @@ class WestIcrhAntenna:
             Input power at external ports in Watts [W]. Default is [1, 1] W.
         phase : list or array
             Input phase at external ports in radian [rad]. Defalt is dipole [0, pi] rad.
+        opt_method : str, optional
+            Scipy Optimization mathod. 'SLSQP' or 'COBYLA' (default)
 
         Returns
         -------
@@ -727,18 +730,24 @@ class WestIcrhAntenna:
             ub = np.array([C0[0]+delta_C, C0[1]+delta_C, C0[2]+delta_C, C0[3]+delta_C, 0, 0])
             const = scipy.optimize.LinearConstraint(A, lb, ub)
 
-            # sol = scipy.optimize.minimize(self._optim_fun_both_sides, C0,
-            #                              args=(f_match, z_match, power, phase),
-            #                              constraints=const, method='SLSQP',
-            #                              options={'disp':True}
-            #                              )
-            sol = scipy.optimize.minimize(
-                self._optim_fun_both_sides, C0,
-                args=(f_match, z_match, power, phase),
-                constraints=const,
-                method="COBYLA",
-                options={"disp": True, 'rhobeg': 0.1},
-            )
+            if opt_method == 'SLSQP':
+                sol = scipy.optimize.minimize(
+                    self._optim_fun_both_sides, C0,
+                    args=(f_match, z_match, power, phase),
+                    constraints=const, method='SLSQP',
+                    options={'disp':True}
+                    )
+            elif opt_method == 'COBYLA':
+                sol = scipy.optimize.minimize(
+                    self._optim_fun_both_sides, C0,
+                    args=(f_match, z_match, power, phase),
+                    constraints=const,
+                    method="COBYLA",
+                    options={"disp": True, 'rhobeg': 0.1},
+                )
+            else:
+                raise ValueError(f'Optimisation method {opt_method} is unknow.')
+
             # test if the solution found is the capacitor range
             success = sol.success
             if (
