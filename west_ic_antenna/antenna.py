@@ -494,19 +494,10 @@ class WestIcrhAntenna:
 
         """
         # Create Antenna network for the capacitances Cs
-        # z_act = self.z_act(power, phase, Cs=list(Cs))
-        s_act = self.s_act(power, phase, Cs=list(Cs))
+        s_act = self._antenna_match.s_act(power, phase, Cs=list(Cs))
 
         # retrieve Z and compare to objective
-        index_f_match = np.argmin(np.abs(self.f - f_match))
-
-        # Z_act_left_re = np.real(z_act[index_f_match,0])
-        # Z_act_left_im = np.imag(z_act[index_f_match,0])
-        # Z_act_right_re = np.real(z_act[index_f_match,1])
-        # Z_act_right_im = np.imag(z_act[index_f_match,1])
-
-        # r = ((Z_act_left_re - np.real(z_match[0])) + (Z_act_left_im - np.imag(z_match[0])))**2 \
-        #    * ((Z_act_right_re - np.real(z_match[1])) + (Z_act_right_im - np.imag(z_match[1])))**2
+        index_f_match = np.argmin(np.abs(self._antenna_match.f - f_match))
 
         r = np.sqrt(np.sum(np.abs(s_act[index_f_match, :]) ** 2))
 
@@ -661,7 +652,9 @@ class WestIcrhAntenna:
         decimals: Union[int, None] = None,
         power: NumberLike = [1, 1],
         phase: NumberLike = [0, np.pi],
-        opt_method: str = 'COBYLA'
+        method: str = 'SLSQP',
+        C0: Union[None, list] = None,
+        delta_C: float = 5
     ) -> NumberLike:
         """
         Match both sides at the same time for a given frequency target.
@@ -683,8 +676,13 @@ class WestIcrhAntenna:
             Input power at external ports in Watts [W]. Default is [1, 1] W.
         phase : list or array
             Input phase at external ports in radian [rad]. Defalt is dipole [0, pi] rad.
-        opt_method : str, optional
-            Scipy Optimization mathod. 'SLSQP' or 'COBYLA' (default)
+        method : str, optional
+            Scipy Optimization mathod. 'SLSQP' (default) or 'COBYLA' 
+        C0 : list or None, optional
+            Initial guess of the matching point. If None, the initial guess
+            is obtained from matching both sides separately. Default is None.
+        delta_C : float, optional
+            Maximum capacitance shift to look for a solution. Default is 5.
 
         Returns
         -------
@@ -692,6 +690,8 @@ class WestIcrhAntenna:
             antenna 4 capacitances [C1, C2, C3, C4] in [pF].
 
         """
+        self._steps = []  # to keep track of minimizer intermediate steps
+
         # creates an antenna circuit for a single frequency only to speed-up calculations
         freq_match = rf.Frequency(f_match, f_match, npoints=1, unit="Hz")
         self._antenna_match = WestIcrhAntenna(freq_match, front_face=self.antenna)
@@ -712,41 +712,42 @@ class WestIcrhAntenna:
         ub = np.array([150, 150, 150, 150, 0, 0])
         const = scipy.optimize.LinearConstraint(A, lb, ub)
 
-        # initial guess from both side separately
-        print("Looking for individual solutions separately for 1st guess...")
-        C0 = self.match_both_sides_separately(
-            f_match=f_match,
-            solution_number=solution_number,
-            z_match=z_match,
-            decimals=decimals,
-        )
+        if not C0:
+            # initial guess from both side separately
+            print("Looking for individual solutions separately for 1st guess...")
+            C0 = self.match_both_sides_separately(
+                f_match=f_match,
+                solution_number=solution_number,
+                z_match=z_match,
+                decimals=decimals,
+            )
 
         print("Searching for the active match point solution...")
         success = False
         while success == False:
-            delta_C = 2
             print(f"Reducing search range to +/- {delta_C}pF around individual solutions")
             lb = np.array([C0[0]-delta_C, C0[1]-delta_C, C0[2]-delta_C, C0[3]-delta_C, -np.inf, -np.inf])
             ub = np.array([C0[0]+delta_C, C0[1]+delta_C, C0[2]+delta_C, C0[3]+delta_C, 0, 0])
             const = scipy.optimize.LinearConstraint(A, lb, ub)
 
-            if opt_method == 'SLSQP':
+            if method == 'SLSQP':
                 sol = scipy.optimize.minimize(
                     self._optim_fun_both_sides, C0,
                     args=(f_match, z_match, power, phase),
                     constraints=const, method='SLSQP',
-                    options={'disp':True}
+                    options={'disp': self.DEBUG},
+                    callback=self._callback
                     )
-            elif opt_method == 'COBYLA':
+            elif method == 'COBYLA':
                 sol = scipy.optimize.minimize(
                     self._optim_fun_both_sides, C0,
                     args=(f_match, z_match, power, phase),
                     constraints=const,
                     method="COBYLA",
-                    options={"disp": True, 'rhobeg': 0.1},
+                    options={"disp": self.DEBUG, 'rhobeg': 0.01},
                 )
             else:
-                raise ValueError(f'Optimisation method {opt_method} is unknow.')
+                raise ValueError(f'Optimisation method {method} is unknow.')
 
             # test if the solution found is the capacitor range
             success = sol.success
@@ -769,6 +770,11 @@ class WestIcrhAntenna:
             print("Rounded result:", Cs)
 
         return Cs
+
+    def _callback(self, xk, step=[0]):
+        """ Store intermediate steps of the minimizer.
+        """
+        self._steps.append(xk)
 
     def optimum_frequency_index(self, power: NumberLike, phase: NumberLike,
                                 Cs: Union[NumberLike, None] = None) -> NumberLike:
