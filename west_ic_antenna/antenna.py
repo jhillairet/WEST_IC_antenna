@@ -558,7 +558,7 @@ class WestIcrhAntenna:
             # satisfying the solution condition
             contin = True
             while contin:
-                C0 = 70 + (-1 + 2 * scipy.random.rand(2)) * 40
+                C0 = 70 + (-1 + 2 * np.random.rand(2)) * 40
                 if C0[0] > C0[1] and solution_number == 1:
                     contin = False
                 elif C0[0] < C0[1] and solution_number == 2:
