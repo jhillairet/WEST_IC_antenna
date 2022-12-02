@@ -647,14 +647,15 @@ class WestIcrhAntenna:
     def match_both_sides(
         self,
         f_match: float = 55e6,
+        power: NumberLike = [1, 1],
+        phase: NumberLike = [0, np.pi],
         solution_number: int = 1,
         z_match: NumberLike = [29.89 + 0j, 29.89 + 0j],
         decimals: Union[int, None] = None,
-        power: NumberLike = [1, 1],
-        phase: NumberLike = [0, np.pi],
         method: str = 'SLSQP',
         C0: Union[None, list] = None,
-        delta_C: float = 5
+        delta_C: float = 5,
+        maxiter: int = 500
     ) -> NumberLike:
         """
         Match both sides at the same time for a given frequency target.
@@ -683,6 +684,8 @@ class WestIcrhAntenna:
             is obtained from matching both sides separately. Default is None.
         delta_C : float, optional
             Maximum capacitance shift to look for a solution. Default is 5.
+        maxiter : int
+            Maximum number of optimization function evaluations.
 
         Returns
         -------
@@ -735,7 +738,7 @@ class WestIcrhAntenna:
                     self._optim_fun_both_sides, C0,
                     args=(f_match, z_match, power, phase),
                     constraints=const, method='SLSQP',
-                    options={'disp': self.DEBUG},
+                    options={'disp': self.DEBUG, 'ftol': 1e-3, 'maxiter': maxiter},
                     callback=self._callback
                     )
             elif method == 'COBYLA':
@@ -744,7 +747,7 @@ class WestIcrhAntenna:
                     args=(f_match, z_match, power, phase),
                     constraints=const,
                     method="COBYLA",
-                    options={"disp": self.DEBUG, 'rhobeg': 0.01},
+                    options={"disp": self.DEBUG, 'rhobeg': 0.01, 'maxiter': maxiter},
                 )
             else:
                 raise ValueError(f'Optimisation method {method} is unknow.')
@@ -1145,7 +1148,7 @@ class WestIcrhAntenna:
         vswr_left = (1 + np.abs(s_act[:, 0])) / (1 - np.abs(s_act[:, 0]))
         vswr_right = (1 + np.abs(s_act[:, 1])) / (1 - np.abs(s_act[:, 1]))
 
-        return np.c_[vswr_left, vswr_right]
+        return np.squeeze(np.c_[vswr_left, vswr_right])
 
     def voltages(self, power: NumberLike, phase: NumberLike,
                  Cs: Union[NumberLike, None] = None) -> NumberLike:
@@ -1319,7 +1322,7 @@ class WestIcrhAntenna:
         Rc_left = 2 * Pt[:, 0] / Is_left ** 2
         Rc_right = 2 * Pt[:, 1] / Is_right ** 2
 
-        return np.c_[Rc_left, Rc_right]
+        return np.squeeze(np.c_[Rc_left, Rc_right])
 
     def Rc_WEST(self, power: NumberLike, phase: NumberLike,
                 Cs: Union[NumberLike, None] = None) -> NumberLike:
