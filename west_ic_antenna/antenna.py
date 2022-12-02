@@ -1667,7 +1667,7 @@ class WestIcrhAntenna:
         return v_left.T, v_right.T  # (nb_f, 2)
 
     @classmethod
-    def TOPICA_front_face(self, Rc: float, mode: str = "L") -> rf.Network:
+    def interpolate_front_face(self, Rc: float, source: str = "TOPICA-L-mode") -> rf.Network:
         """
         Return a TOPICA front-face rf.Network interpolated from the L or H mode data.
 
@@ -1675,12 +1675,11 @@ class WestIcrhAntenna:
         ----------
         Rc : float
             Desired interpolated coupling resistance value. Rc must be within
-            the interval of possible values, which depends of the mode:
-            L-mode plasma front-face have Rc in [1, 2.91]
-            H-mode plasma front-face have Rc in [0.39, 1.71]
+            the interval of possible values, which depends of the front-face type:
 
-        mode : str, optional
-            'L' or 'H' mode profile. The default is 'L'.
+        source : str, optional
+            'TOPICA-L-mode': L-mode plasmas from TOPICA. Rc in [1, 2.91] (default)
+            'TOPICA-H-mode': H-mode plasmas from TOPICA. Rc in [0.39, 1.71]
 
         Returns
         -------
@@ -1689,10 +1688,10 @@ class WestIcrhAntenna:
 
         Examples
         --------
-        >>> plasma = WestIcrhAntenna.TOPICA_front_face(Rc=1, mode='L')
+        >>> plasma = WestIcrhAntenna.interpolate_front_face(Rc=1, mode='TOPICA-L-mode')
 
         """
-        if mode == "L":
+        if source == "TOPICA-L-mode":
             ntwks = [
                 rf.Network(filename)
                 for filename in [
@@ -1703,7 +1702,7 @@ class WestIcrhAntenna:
             ]
             # Ideal coupling resistance for each of them
             Rcs = [1.0, 1.34, 1.57, 1.81, 2.05, 2.45, 2.65, 2.91]
-        elif mode == "H":
+        elif source == "TOPICA-H-mode":
             ntwks = [
                 rf.Network(
                     S_PARAMS_DIR
@@ -1719,6 +1718,18 @@ class WestIcrhAntenna:
                 ),
             ]
             Rcs = [0.39, 0.80, 1.71]
+
+        elif source == "homogeneous-dielectric":
+            epsr = [1, 21, 41, 61, 81, 101, 121, 141, 161, 181, 200]
+            ntwks = [
+                rf.Network(filename)
+                for filename in [
+                    S_PARAMS_DIR
+                    + f"/front_faces/homogeneous_dielectric/WEST_ICRH_front_face_Front Face Flat homogeneous Dielectric_epsr{idx:03}.s4p"
+                    for idx in epsr
+                ]
+            ]            
+            Rcs = [0.036, 0.045, 0.063, 0.097, 0.173, 0.335, 0.542, 0.775, 1.044, 1.316, 1.607]
 
         ntw_set = rf.NetworkSet(ntwks)
 
