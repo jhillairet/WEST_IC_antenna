@@ -1665,6 +1665,80 @@ class WestIcrhAntenna:
         v_right = K * T @ np.c_[np.real(epsilons[:, 1]), np.imag(epsilons[:, 1])].T
 
         return v_left.T, v_right.T  # (nb_f, 2)
+    
+    def match_both_sides_iterative(
+            self,
+            f_match: float = 55e6,
+            power: NumberLike = [1, 1],
+            phase: NumberLike = [0, np.pi],
+            solution_number: int = 1,
+            K: float = 0.7,
+            z_T_target: float = Z_T_OPT,
+            C0: Union[None, list] = None,
+        ) -> NumberLike:
+        """
+        
+
+        Parameters
+        ----------
+        f_match : float, optional
+            DESCRIPTION. The default is 55e6.
+        power : NumberLike, optional
+            DESCRIPTION. The default is [1, 1].
+        phase : NumberLike, optional
+            DESCRIPTION. The default is [0, np.pi].
+        solution_number : int, optional
+            DESCRIPTION. The default is 1.
+        K : float, optional
+            DESCRIPTION. The default is 0.7.
+        z_T_target : float, optional
+            DESCRIPTION. The default is Z_T_OPT.
+        C0 : Union[None, list], optional
+            DESCRIPTION. The default is None.
+         : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        NumberLike
+            DESCRIPTION.
+
+        """
+        
+        if C0 is not None:
+            if solution_number == 1:
+                C0 = [60, 40, 60, 40] # note that the start point matches solution 1 (Ctop>Cbot)
+            elif solution_number == 2:
+                C0 = [40, 60, 40, 60]
+
+        # creates an antenna circuit for a single frequency only to speed-up calculations
+        freq_match = rf.Frequency(f_match, f_match, npoints=1, unit="Hz")
+        self._antenna_match = WestIcrhAntenna(freq_match, front_face=self.antenna)
+                
+        Cs = []
+        Cs.append(list(C0)) # new list to avoid reference
+        cont = True
+        iterations = 0 
+        while cont:
+            C_next_left, C_next_right, eps = self._antenna_match.capacitor_predictor(
+                power, phase, Cs[-1], z_T_target=z_T_target,
+                solution_number=solution_number, K=K
+                )
+            Cit = [C_next_left.squeeze()[0], C_next_left.squeeze()[1], 
+                  C_next_right.squeeze()[0], C_next_right.squeeze()[1]]
+            if self.DEBUG:
+                print(Cit)
+            iterations += 1
+            if iterations > 1 and (np.abs(Cs[-1][0] - Cit[0]) < 0.01) and (np.abs(Cs[-1][1] - Cit[1]) < 0.01):
+                cont = False
+            if iterations > 60:
+                cont = False
+            Cs.append([Cit[0], Cit[1], Cit[2], Cit[3]])
+        # store the history of iterative solutions
+        self._steps = Cs
+        print(f'Stopped after {iterations} iterations')
+        print(f'Solution found: {Cit}')
+        return Cit
 
     @classmethod
     def interpolate_front_face(self, Rc: float, source: str = "TOPICA-L-mode") -> rf.Network:
