@@ -94,11 +94,13 @@ class DigitalTwin(widgets.HBox):
         C3_plus = plus_minus_button('C3', 'plus')
         C4_minus = plus_minus_button('C4', 'minus')
         C4_plus = plus_minus_button('C4', 'plus')
+        button_plot = widgets.Button(description='plot')
         
         capas = widgets.HBox([widgets.VBox([widgets.Box([widgets.Label('C1: '), C1, C1_minus, C1_plus]),
                                             widgets.Box([widgets.Label('C2: '), C2, C2_minus, C2_plus])]),
                               widgets.VBox([widgets.Box([widgets.Label('C3: '), C3, C3_minus, C3_plus]),
                                             widgets.Box([widgets.Label('C4: '), C4, C4_minus, C4_plus])]),
+                              button_plot
                              ])
 
         # excitation widgets
@@ -114,7 +116,10 @@ class DigitalTwin(widgets.HBox):
         # matching widgets
         match_freq = widgets.FloatSlider(min=40, max=65, value=55.5, step=1e-1,
                                         continuous_update=False)
-        match_type = widgets.RadioButtons(options=['Left Side only', 'Right Side only', 'Both Sides Separately', 'Both Sides Simultaneously', 'Both Sides Simultaneously (iterative)'])
+        match_type = widgets.RadioButtons(options=['Left Side only', 'Right Side only', 
+                                                   'Both Sides Separately', 
+                                                   'Both Sides Simultaneously', 
+                                                   'Both Sides Simultaneously (iterative)'])
         match_sol = widgets.RadioButtons(options=['1', '2'])
         match_button = widgets.Button(description='Match', disabled=False,
                                button_style='', tooltip='Click me', icon='check')
@@ -164,7 +169,7 @@ class DigitalTwin(widgets.HBox):
 
 
         frequency_range = widgets.FloatRangeSlider(
-            value=[53, 57],
+            value=[match_freq.value-1, match_freq.value+1],
             min=30.0,
             max=70.0,
             step=0.1,
@@ -183,7 +188,7 @@ class DigitalTwin(widgets.HBox):
         ])
 
         # Init the figure
-        fig, axes = plt.subplots(5, 1, sharex=True, figsize=(8,6));
+        fig, axes = plt.subplots(6, 1, sharex=True, figsize=(8,6));
         [a.set_ylim(-30, 2) for a in axes[:1]]
         [a.grid(True) for a in axes]
         axes[0].set_ylabel('$S_{ii}$ [dB]')
@@ -191,6 +196,7 @@ class DigitalTwin(widgets.HBox):
         axes[2].set_ylabel('Voltage [kV]')
         axes[3].set_ylabel('Currents [A]')
         axes[4].set_ylabel('Phase [deg]')
+        axes[5].set_ylabel('Err Sign')
         #axes[5].set_ylabel('Phase [deg]')
         #axes[5].set_ylim(-180, 180)
         #axes[6].set_ylabel('Rc [Ohm]')
@@ -222,8 +228,12 @@ class DigitalTwin(widgets.HBox):
                 Vs = antenna.voltages(power, phase)
                 Is = antenna.currents(power, phase)
                 Rc = antenna.Rc_WEST(power, phase)
+                Cs_left, Cs_right, _ = antenna.capacitor_predictor(power, phase, Cs=antenna.Cs)
+                vleft, vright = antenna.capacitor_velocities(power, phase, Cs=antenna.Cs)
 
             """Remove old lines from plot and plot new ones"""
+            [ax.clear() for ax in axes]
+             
             # S11 and S22
             [[l.remove() for l in ax.lines] for ax in axes]
             [[l.remove() for l in ax.lines] for ax in axes]            
@@ -243,19 +253,32 @@ class DigitalTwin(widgets.HBox):
             # axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,1]/Vs[:,0], deg=True)))
             # axes[5].plot(antenna.f_scaled, (np.angle(Vs[:,2]/Vs[:,3], deg=True)))
             # axes[6].plot(antenna.f_scaled, Rc)
+
+            axes[5].plot(antenna.f_scaled, vleft[:,0], color='C0')
+            axes[5].plot(antenna.f_scaled, vleft[:,1], color='C1')
+            axes[5].plot(antenna.f_scaled, vright[:,0], color='C2')
+            axes[5].plot(antenna.f_scaled, vright[:,1], color='C3')                       
             
+            #axes[5].plot(antenna.f_scaled, Cs_left[:,0] - antenna.Cs[0], color='C0', label='dC1')
+            #axes[5].plot(antenna.f_scaled, Cs_left[:,1] - antenna.Cs[1], color='C1', label='dC2')
+            #axes[5].plot(antenna.f_scaled, Cs_right[:,0] - antenna.Cs[2], color='C2', label='dC3')
+            #axes[5].plot(antenna.f_scaled, Cs_right[:,1] - antenna.Cs[3], color='C3', label='dC4')           
             
             axes[2].legend(('V1', 'V2', 'V3', 'V4'), ncol=4)
             axes[3].legend(('I1', 'I2', 'I3', 'I4'), ncol=4)
             axes[4].legend(('∠(V3/V1)', '∠(V4/V2)'), ncol=2)
             # axes[5].legend(('∠(V2/V1)', '∠(V4/V3)'), ncol=2)
             # axes[6].legend(('Left', 'Right'), ncol=2)
-            
+            axes[5].set_ylim(-10, 10)
             [a.axvline(match_freq.value, ls='--', color='k') for a in axes]
         
             axes[0].set_xlim(left=frequency_range.value[0], right=frequency_range.value[1])
 
-
+        # When one change the match frequency
+        def cb_match_frequency(_):
+            # update the frequency span of the figure
+            frequency_range.value = [match_freq.value-1, match_freq.value+1]                
+            
         # match the antenna
         def match(_):
             with out_matching:
@@ -264,7 +287,7 @@ class DigitalTwin(widgets.HBox):
                 # what happens when we press the button
                 clear_output()
                 if match_type.value == 'Left Side only':
-                    print('Searching for a match point left side')
+                    print(f'Searching for a match point left side at {match_freq.value*1e6}')
                     Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6,
                                                     side='left', solution_number=int(match_sol.value))
                     Cs[0] = Cs_sol[0]
@@ -272,24 +295,27 @@ class DigitalTwin(widgets.HBox):
                     C1.value = Cs[0]
                     C2.value = Cs[1]
                 elif match_type.value == 'Right Side only':
-                    print('Searching for a match point right side')
-                    Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6, side='right', solution_number=int(match_sol.value))
+                    print(f'Searching for a match point right side at {match_freq.value*1e6}')
+                    Cs_sol = antenna.match_one_side(f_match=match_freq.value*1e6,
+                                                    side='right', solution_number=int(match_sol.value))
                     Cs[2] = Cs_sol[2]
                     Cs[3] = Cs_sol[3]
                     C3.value = Cs[2]
                     C4.value = Cs[3]
                 elif match_type.value == 'Both Sides Separately':
-                    print('Searching for a match point both sides separately')
-                    Cs_sol = antenna.match_both_sides_separately(f_match=match_freq.value*1e6, solution_number=int(match_sol.value))
+                    print(f'Searching for a match point both sides separately at {match_freq.value*1e6}')
+                    Cs_sol = antenna.match_both_sides_separately(f_match=match_freq.value*1e6,
+                                                                 solution_number=int(match_sol.value))
                     Cs = Cs_sol
                     C1.value = Cs[0]
                     C2.value = Cs[1]
                     C3.value = Cs[2]
                     C4.value = Cs[3]
                 elif match_type.value == 'Both Sides Simultaneously':
-                    Cs_sol = antenna.match_both_sides(f_match=match_freq.value*1e6, solution_number=int(match_sol.value), 
-                                                     power=[power_left.value*1e3, power_right.value*1e3],
-                                                     phase=[0, np.deg2rad(phase_rel.value)])
+                    Cs_sol = antenna.match_both_sides(f_match=match_freq.value*1e6,
+                                                      solution_number=int(match_sol.value), 
+                                                      power=[power_left.value*1e3, power_right.value*1e3],
+                                                      phase=[0, np.deg2rad(phase_rel.value)])
                     Cs = Cs_sol
                     C1.value = Cs[0]
                     C2.value = Cs[1]
@@ -310,6 +336,7 @@ class DigitalTwin(widgets.HBox):
                 plot_s([])
 
         # Define callbacks
+        match_freq.observe(cb_match_frequency)
         match_button.on_click(match)
         C1.observe(plot_s)
         C2.observe(plot_s)
@@ -321,6 +348,7 @@ class DigitalTwin(widgets.HBox):
         frequency_range.observe(plot_s)
         frequency_npoints.observe(plot_s)
         front_face.observe(plot_s)
+        button_plot.on_click(plot_s)
 
         # setting the tab windows
         tab = widgets.Tab()
