@@ -855,7 +855,8 @@ class WestIcrhAntenna:
         f = f or self.frequency.f
         # scaled frequency
         f_MHz = f / 1e6
-        Xs = 1.66e-04 * f_MHz ** 3 - 1.53e-02 * f_MHz ** 2 + 1.04 * f_MHz - 7.77
+        Xs = 1.66e-04 * f_MHz ** 3 - 1.53e-02 * f_MHz ** 2 + 1.04 * f_MHz - 7.77  # JH
+        #Xs = 0.000102 * f_MHz ** 3 - 0.007769 * f_MHz ** 2 + 0.724653 * f_MHz - 3.175984  # CODAC DFCI
         return Xs
 
     def load(self, Rc: float, Xs: Union[float, None] = None):
@@ -1206,6 +1207,12 @@ class WestIcrhAntenna:
         idx_antenna = [0, 4, 2, 6]  # for port 1,2,3,4 of the antenna
         return self.circuit(_Cs).currents(power, phase)[:, idx_antenna]
 
+    def currents_WEST(self, power: NumberLike, phase: NumberLike,
+                 Cs: Union[NumberLike, None] = None) -> NumberLike:
+        X = self._Xs()
+        V = self.voltages(power, phase, Cs)
+        return X*1e6*V
+    
     def Z_T(self, power: NumberLike, phase: NumberLike,
             Cs: Union[NumberLike, None] = None) -> NumberLike:
         """
@@ -1239,24 +1246,24 @@ class WestIcrhAntenna:
         Z_T = Zs[:, (7, 8)]
         return Z_T
 
-    def _Xs(self) -> NumberLike:
-        """
-        Xs from interpolation (from Walid).
-
-        Returns
-        -------
-        - Xs : array
-            Strap Admittance best fit
-
-        """
-        f_MHz = self._frequency.f / 1e6
-        p1Xs = 0.000102
-        p2Xs = -0.007769
-        p3Xs = 0.724653
-        p4Xs = -3.175984
-        Xs = p1Xs * f_MHz ** 3 + p2Xs * f_MHz ** 2 + p3Xs * f_MHz ** 1 + p4Xs
-        return Xs
-
+#   def _Xs(self) -> NumberLike:
+#       """
+#       Xs from interpolation (from Walid).
+#
+#        Returns
+#        -------
+#        - Xs : array
+#            Strap Admittance best fit
+#
+#        """
+#        f_MHz = self._frequency.f / 1e6
+#        p1Xs = 0.000102
+#        p2Xs = -0.007769
+#        p3Xs = 0.724653
+#        p4Xs = -3.175984
+#        Xs = p1Xs * f_MHz ** 3 + p2Xs * f_MHz ** 2 + p3Xs * f_MHz ** 1 + p4Xs
+#        return Xs
+        
     def Pr(self, power: NumberLike, phase: NumberLike,
            Cs: Union[NumberLike, None] = None) -> NumberLike:
         """
