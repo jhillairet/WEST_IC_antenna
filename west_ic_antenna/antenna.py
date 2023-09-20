@@ -343,6 +343,93 @@ class WestIcrhAntenna:
         ]
         return rf.Circuit(connections)
 
+
+    def _access_circuit(self, Cs: NumberLike) -> 'Circuit':
+        """
+        Antenna without the from face scikit-rf Circuit ("access").
+        
+        Port 1 and 2 are associated to the left and right antenna feeders respectively.
+        Port 3,4,5,6 corresponds to the plasma/front-face.
+
+        Parameters
+        ----------
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]
+
+        Returns
+        -------
+        circuit: :class:`skrf.circuit.Circuit`
+            Access Circuit
+
+        """
+        C1, C2, C3, C4 = Cs
+        # left side
+        capa_C1 = self.capa(
+            C1, z0_bridge=self.bridge_left.z0[0][1], z0_antenna=self.antenna.z0[0][0]
+        )
+        capa_C1.name = "C1"
+        capa_C2 = self.capa(
+            C2, z0_bridge=self.bridge_left.z0[0][2], z0_antenna=self.antenna.z0[0][2]
+        )
+        capa_C2.name = "C2"
+        # right side
+        capa_C3 = self.capa(
+            C3, z0_bridge=self.bridge_right.z0[0][1], z0_antenna=self.antenna.z0[0][1]
+        )
+        capa_C3.name = "C3"
+        capa_C4 = self.capa(
+            C4, z0_bridge=self.bridge_right.z0[0][2], z0_antenna=self.antenna.z0[0][3]
+        )
+        capa_C4.name = "C4"
+        
+        # ports associated to each capacitors
+        self.port_C1 = rf.Circuit.Port(
+                    self.frequency, "port_C1", z0=self.antenna.z0[:, 0]
+                    )
+        self.port_C2 = rf.Circuit.Port(
+                    self.frequency, "port_C2", z0=self.antenna.z0[:, 1]
+                    )
+        self.port_C3 = rf.Circuit.Port(
+                    self.frequency, "port_C3", z0=self.antenna.z0[:, 2]
+                    )
+        self.port_C4 = rf.Circuit.Port(
+                    self.frequency, "port_C4", z0=self.antenna.z0[:, 3]
+                    )
+        
+
+        # WARNING !
+        # antenna port numbering convention does not follow capa and voltage :
+        # view from behind:
+        #   port1  port2
+        #   port3  port4
+        # while for capa and voltage it is:
+        #   C1  C3
+        #   C2  C4
+        # service stub 3rd ports are left open
+        connections = [
+            [(self.bridge_left, 0), (self.windows_impedance_transformer_left, 1)],
+            [(self.bridge_right, 0), (self.windows_impedance_transformer_right, 1)],
+            [(self.windows_impedance_transformer_left, 0), (self.service_stub_left, 1)],
+            [(self.service_stub_left, 0), (self.port_left, 0)],
+            [
+                (self.windows_impedance_transformer_right, 0),
+                (self.service_stub_right, 1),
+            ],
+            [(self.service_stub_right, 0), (self.port_right, 0)],
+            [(self.service_stub_left, 2), (self.short_left, 0)],
+            [(self.service_stub_right, 2), (self.short_right, 0)],
+            [(self.port_C1, 0), (capa_C1, 1)],
+            [(self.port_C2, 0), (capa_C3, 1)],
+            [(self.port_C3, 0), (capa_C2, 1)],
+            [(self.port_C4, 0), (capa_C4, 1)],
+            [(capa_C1, 0), (self.bridge_left, 1)],
+            [(capa_C2, 0), (self.bridge_left, 2)],
+            [(capa_C3, 0), (self.bridge_right, 1)],
+            [(capa_C4, 0), (self.bridge_right, 2)],            
+        ]
+        return rf.Circuit(connections)
+
+
     @property
     def Cs(self) -> List:
         """
