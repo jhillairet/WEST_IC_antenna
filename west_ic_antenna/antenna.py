@@ -246,8 +246,12 @@ class WestIcrhAntenna:
 
 
         """
-        z0_bridge = z0_bridge or self.bridge.z0[:, 1]
-        z0_antenna = z0_antenna or self.antenna.z0[:, 0]
+        # Port Characterics impedances
+        # NB: Taking real parts, as the small imaginary parts comes from 
+        # lossy boundary conditions in HFSS and are supposed not physical.
+        z0_bridge = z0_bridge or self.bridge.z0[:, 1].real
+        z0_antenna = z0_antenna or self.antenna.z0[:, 0].real
+
         # dummy transmission line to create lumped components
         # the 50 Ohm characteristic impedance is artifical. However, the R,L,R1,L1,C1 values
         # have been fitted to full-wave solutions using this 50 ohm value, so it should not be modified
@@ -271,7 +275,8 @@ class WestIcrhAntenna:
         # ANSYS Designer seems not doing it and leaves to 50 ohm
         # renormalizing the z0 will lead to decrease the matched capacitances by ~10pF @55MHz
         # In reality, values are closer to 50 pF at 55 MHz
-        # capa.z0 = [z0_bridge, z0_antenna]
+        capa.renormalize(z_new=np.array([z0_bridge, z0_antenna]).T)
+
         return capa
 
     def _antenna_circuit(self, Cs: NumberLike) -> 'Circuit':
