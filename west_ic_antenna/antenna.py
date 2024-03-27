@@ -246,8 +246,12 @@ class WestIcrhAntenna:
 
 
         """
-        z0_bridge = z0_bridge or self.bridge.z0[:, 1]
-        z0_antenna = z0_antenna or self.antenna.z0[:, 0]
+        # Port Characterics impedances
+        # NB: Taking real parts, as the small imaginary parts comes from 
+        # lossy boundary conditions in HFSS and are supposed not physical.
+        z0_bridge = z0_bridge or self.bridge.z0[:, 1].real
+        z0_antenna = z0_antenna or self.antenna.z0[:, 0].real
+
         # dummy transmission line to create lumped components
         # the 50 Ohm characteristic impedance is artifical. However, the R,L,R1,L1,C1 values
         # have been fitted to full-wave solutions using this 50 ohm value, so it should not be modified
@@ -267,11 +271,10 @@ class WestIcrhAntenna:
 
         capa = pre ** cap ** post
 
-        # should we renormalize of not z0 to the Network's z0 they will be connected to?
-        # ANSYS Designer seems not doing it and leaves to 50 ohm
-        # renormalizing the z0 will lead to decrease the matched capacitances by ~10pF @55MHz
-        # In reality, values are closer to 50 pF at 55 MHz
-        # capa.z0 = [z0_bridge, z0_antenna]
+        # Renormalize z0s' to match left and right Network connected to
+        # If not renormalized, the match point would differ by ~1.4 pF at 55 MHz
+        capa.renormalize(z_new=np.array([z0_bridge, z0_antenna]).T)
+
         return capa
 
     def _antenna_circuit(self, Cs: NumberLike) -> 'Circuit':
@@ -317,7 +320,6 @@ class WestIcrhAntenna:
         # while for capa and voltage it is:
         #   C1  C3
         #   C2  C4
-        # service stub 3rd ports are left open
         connections = [
             [(self.antenna, 0), (capa_C1, 1)],
             [(self.antenna, 1), (capa_C3, 1)],
@@ -329,14 +331,9 @@ class WestIcrhAntenna:
             [(capa_C4, 0), (self.bridge_right, 2)],
             [(self.bridge_left, 0), (self.windows_impedance_transformer_left, 1)],
             [(self.bridge_right, 0), (self.windows_impedance_transformer_right, 1)],
-            # [(self.windows_impedance_transformer_left, 0), (self.port_left, 0)],  # no stub
-            # [(self.windows_impedance_transformer_right, 0),  (self.port_right, 0)],  # no stub
             [(self.windows_impedance_transformer_left, 0), (self.service_stub_left, 1)],
+            [(self.windows_impedance_transformer_right, 0), (self.service_stub_right, 1)],
             [(self.service_stub_left, 0), (self.port_left, 0)],
-            [
-                (self.windows_impedance_transformer_right, 0),
-                (self.service_stub_right, 1),
-            ],
             [(self.service_stub_right, 0), (self.port_right, 0)],
             [(self.service_stub_left, 2), (self.short_left, 0)],
             [(self.service_stub_right, 2), (self.short_right, 0)],
@@ -1678,45 +1675,47 @@ class WestIcrhAntenna:
             f_match: float = 55e6,
             power: NumberLike = [1, 1],
             phase: NumberLike = [0, np.pi],
+            Cs: Union[None, list] = None,
             solution_number: int = 1,
-            K: float = 0.7,
             z_T_target: float = Z_T_OPT,
-            C0: Union[None, list] = None,
+            K: float = 0.7,
         ) -> NumberLike:
         """
-        
+        Match both sides using the automatic matching alg. (iterative).
 
         Parameters
         ----------
         f_match : float, optional
             DESCRIPTION. The default is 55e6.
-        power : NumberLike, optional
-            DESCRIPTION. The default is [1, 1].
-        phase : NumberLike, optional
-            DESCRIPTION. The default is [0, np.pi].
-        solution_number : int, optional
-            DESCRIPTION. The default is 1.
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+            Default is None (use internal Cs)
+        z_T_target : complex, optional
+            Desired target (Set Point) for the input impedance at T-junction.
+            The default is 2.89-0.17j.
+        solution_number : int
+            Desired solution. 1 for C_top > C_bot and 2 for the opposite.
         K : float, optional
-            DESCRIPTION. The default is 0.7.
-        z_T_target : float, optional
-            DESCRIPTION. The default is Z_T_OPT.
-        C0 : Union[None, list], optional
-            DESCRIPTION. The default is None.
-         : TYPE
-            DESCRIPTION.
+            Gain. Default value: 0.7.
+            Smaller value leads to higher number of iterations.
 
         Returns
         -------
-        NumberLike
-            DESCRIPTION.
+        Cs_match : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
 
         """
+        C0 = Cs or self.Cs
         
-        if C0 is not None:
-            if solution_number == 1:
-                C0 = [60, 40, 60, 40] # note that the start point matches solution 1 (Ctop>Cbot)
-            elif solution_number == 2:
-                C0 = [40, 60, 40, 60]
+        # if C0 is not None:
+        #     if solution_number == 1:
+        #         C0 = [60, 40, 60, 40] # note that the start point matches solution 1 (Ctop>Cbot)
+        #     elif solution_number == 2:
+        #         C0 = [40, 60, 40, 60]
 
         # creates an antenna circuit for a single frequency only to speed-up calculations
         freq_match = rf.Frequency(f_match, f_match, npoints=1, unit="Hz")
