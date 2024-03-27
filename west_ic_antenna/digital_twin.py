@@ -31,13 +31,13 @@ class DigitalTwin(widgets.HBox):
 
         #### defining widgets
         # capacitor widgets
-        C1 = widgets.FloatSlider(value=49.31, min=30.0, max=120.0, step=1e-4,
+        C1 = widgets.FloatSlider(value=50.62, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        C2 = widgets.FloatSlider(value=47.38, min=30.0, max=120.0, step=1e-4,
+        C2 = widgets.FloatSlider(value=48.69, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        C3 = widgets.FloatSlider(value=49.11, min=30.0, max=120.0, step=1e-4,
+        C3 = widgets.FloatSlider(value=50.15, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
-        C4 = widgets.FloatSlider(value=47.56, min=30.0, max=120.0, step=1e-4,
+        C4 = widgets.FloatSlider(value=48.86, min=30.0, max=120.0, step=1e-4,
                                  continuous_update=False)
 
         def capa_plus(clicked_button): 
