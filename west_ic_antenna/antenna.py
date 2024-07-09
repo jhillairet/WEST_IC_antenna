@@ -1709,7 +1709,10 @@ class WestIcrhAntenna:
             antenna 4 capacitances [C1, C2, C3, C4] in [pF].
 
         """
-        C0 = Cs or self.Cs
+        if Cs is None:
+            C0 = self.Cs
+        else:
+            C0 = Cs
         
         # if C0 is not None:
         #     if solution_number == 1:
