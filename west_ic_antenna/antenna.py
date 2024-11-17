@@ -1148,6 +1148,27 @@ class WestIcrhAntenna:
 
         return np.squeeze(np.c_[vswr_left, vswr_right])
 
+    def s_act_db(self, power: NumberLike, phase: NumberLike,
+                 Cs: Union[NumberLike, None] = None) -> NumberLike:
+        """
+        Active S-parameters magnitude in dB for a given excitation.
+
+        Parameters
+        ----------
+        power : list or array
+            Input power at external ports in Watts [W]
+        phase : list or array
+            Input phase at external ports in radian [rad]
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF]. Default is None (use internal Cs)
+
+        Returns
+        -------
+        s_act_db : real array (nb_f, 2)
+            Active S-parameters magnitude in dB
+        """
+        return rf.mag_2_db(np.abs(self.s_act(power, phase, Cs)))
+
     def voltages(self, power: NumberLike, phase: NumberLike,
                  Cs: Union[NumberLike, None] = None) -> NumberLike:
         """
