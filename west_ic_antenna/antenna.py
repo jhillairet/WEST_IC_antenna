@@ -21,7 +21,7 @@ from numbers import Number
 NumberLike = Union[Number, Sequence[Number], np.ndarray]
 
 if TYPE_CHECKING:
-    from skrf import Network, Circuit, Frequency
+    from skrf import Circuit, Frequency
 
 # #### Default parameters ####
 here = os.path.dirname(os.path.abspath(__file__))
@@ -149,10 +149,10 @@ class WestIcrhAntenna:
 
         # antenna front-face
         front_face = front_face or DEFAULT_FRONT_FACE
-        if type(front_face) == str:
+        if isinstance(front_face, str):
             # if a string, this should be a path to a Touchstone file
             self._antenna = rf.Network(front_face)
-        elif type(front_face) == rf.network.Network:
+        elif isinstance(front_face, rf.network.Network):
             # if a Network
             self._antenna = front_face.copy()
 
@@ -550,7 +550,7 @@ class WestIcrhAntenna:
 
         # try finding a solution until it's a physical one.
         success = False
-        while success == False:
+        while not success:
             # generate a random C sets, centered on 70 +/- 40
             # satisfying the solution condition
             contin = True
@@ -724,7 +724,7 @@ class WestIcrhAntenna:
 
         print("Searching for the active match point solution...")
         success = False
-        while success == False:
+        while not success:
             print(f"Reducing search range to +/- {delta_C}pF around individual solutions")
             lb = np.array([C0[0]-delta_C, C0[1]-delta_C, C0[2]-delta_C, C0[3]-delta_C, -np.inf, -np.inf])
             ub = np.array([C0[0]+delta_C, C0[1]+delta_C, C0[2]+delta_C, C0[3]+delta_C, 0, 0])
