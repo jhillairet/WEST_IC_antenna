@@ -24,7 +24,7 @@ version = {attr = "west_ic_antenna.__version__"}
 test = [
     "pytest>=8.3.3",
 ]
-doc = [
+docs = [
     "ipykernel>=6.29.5",
     "nbsphinx>=0.9.5",
     "sphinx-rtd-theme>=3.0.2",
