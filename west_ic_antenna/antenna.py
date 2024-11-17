@@ -1052,7 +1052,7 @@ class WestIcrhAntenna:
 
     def s_act(self, power: NumberLike, phase: NumberLike,
               Cs: Union[NumberLike, None] = None) -> NumberLike:
-        """
+        r"""
         Active S-parameters for a given excitation.
 
         Active s-parameters are defined by :
@@ -1082,7 +1082,7 @@ class WestIcrhAntenna:
 
     def z_act(self, power: NumberLike, phase: NumberLike,
               Cs: Union[NumberLike, None] = None) -> NumberLike:
-        """
+        r"""
         Active Z-parameters for a given excitation.
 
         The active Z-parameters are defined by:
@@ -1114,7 +1114,7 @@ class WestIcrhAntenna:
 
     def vswr_act(self, power: NumberLike, phase: NumberLike,
                  Cs: Union[NumberLike, None] = None) -> NumberLike:
-        """
+        r"""
         Active VSWR for a given excitation.
 
         The active VSWR is defined by :
