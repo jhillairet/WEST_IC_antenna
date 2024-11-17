@@ -21,6 +21,7 @@ DATA_DIR = os.path.join(TEST_DIR, "../data")
 
 @pytest.fixture
 def antenna_default_arg():
+    """Default West ICRH Antenna class"""
     return WestIcrhAntenna()
 
 
@@ -98,7 +99,7 @@ def test_capa_model_bridge_antenna_ports(antenna_default_arg):
     """
     Benchmark capacitor model with ANSYS Circuit model.
 
-    Specifiyng bridge and antenna ports'Z0 in ANSYS (real values).
+    Specifying bridge and antenna ports'Z0 in ANSYS (real values).
     """
     ant = antenna_default_arg
     cap = ant.capa(C=50)
@@ -114,8 +115,8 @@ def test_capa_model_bridge_antenna_ports_renorm50ohm(antenna_default_arg):
     """
     Benchmark capacitor model with ANSYS Circuit model.
 
-    Specifiyng bridge and antenna ports'Z0 in ANSYS (real values),
-    but renormalizing ANSYS results to 50 ohm during export of Touchstone.
+    Specifying bridge and antenna ports'Z0 in ANSYS (real values),
+    but re-normalizing ANSYS results to 50 ohm during export of Touchstone.
     """
     ant = antenna_default_arg
     cap_50 = ant.capa(C=50, z0_bridge=50, z0_antenna=50)
@@ -131,10 +132,10 @@ def test_capa_model_connection(antenna_default_arg):
     Benchmark dummy circuit model of a antenna-capa-bridge vs ANSYS Circuit.
 
     In ANSYS, a single capacitor electrical circuit is connected to one bridge
-    output and to an antenne front face input (using HFSS model).
+    output and to an antenna front face input (using HFSS model).
     Bridge input is connected to input port and all other ports are shorted.
 
-    Benchmark is performed when the Touchtone file is exported without and with
+    Benchmark is performed when the Touchstone file is exported without and with
     50 Ohm renormalization.
 
     """
