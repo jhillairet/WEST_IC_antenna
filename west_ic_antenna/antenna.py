@@ -27,12 +27,12 @@ if TYPE_CHECKING:
 here = os.path.dirname(os.path.abspath(__file__))
 S_PARAMS_DIR = here + "/data/Sparameters/"
 # NB : bridge and impedance transformer should be defined for the same frequencies
-DEFAULT_BRIDGE = S_PARAMS_DIR + "WEST_ICRH_Bridge_30to70MHz.s3p"
-DEFAULT_IMPEDANCE_TRANSFORMER = S_PARAMS_DIR + "WEST_ICRH_Transf_Window_PumpHolePMC.s2p"
-DEFAULT_SERVICE_STUB = S_PARAMS_DIR + "WEST_ICRH_Stub_30to70MHz.s3p"
+DEFAULT_BRIDGE = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Bridge_30to70MHz.s3p")
+DEFAULT_IMPEDANCE_TRANSFORMER = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Transf_Window_PumpHolePMC.s2p")
+DEFAULT_SERVICE_STUB = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Stub_30to70MHz.s3p")
 # antenna front face data are interpolated on bridge's frequencies
 DEFAULT_FRONT_FACE = (
-    S_PARAMS_DIR + "front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p"
+    os.path.join(S_PARAMS_DIR, "front_faces/WEST_ICRH_antenna_front_face_curved_30to70MHz.s4p")
 )
 # Optimal Impedance at T-junction
 Z_T_OPT = 2.89 - 0.17j

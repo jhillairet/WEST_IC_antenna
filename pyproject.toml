@@ -21,6 +21,7 @@ test = [
 docs = [
     "ipykernel>=6.29.5",
     "nbsphinx>=0.9.5",
+    "pandoc>=2.4",
     "sphinx-rtd-theme>=3.0.2",
     "sphinx>=8.1.3",
 ]
@@ -30,5 +31,3 @@ license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
 version = {attr = "west_ic_antenna.__version__"}
-
-
