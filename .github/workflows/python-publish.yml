@@ -21,5 +21,7 @@ jobs:
           pattern: wheels-*
           path: wheels
           merge-multiple: true
+      - name: Build Package
+        run: uv build
       - name: Publish to PyPi
         run: uv publish -v wheels/*
