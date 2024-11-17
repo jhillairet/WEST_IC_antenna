@@ -28,9 +28,6 @@ here = os.path.dirname(os.path.abspath(__file__))
 S_PARAMS_DIR = here + "/data/Sparameters/"
 # NB : bridge and impedance transformer should be defined for the same frequencies
 DEFAULT_BRIDGE = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Bridge_30to70MHz.s3p")
-print(DEFAULT_BRIDGE)
-print(os.path.exists(DEFAULT_BRIDGE))
-
 DEFAULT_IMPEDANCE_TRANSFORMER = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Transf_Window_PumpHolePMC.s2p")
 DEFAULT_SERVICE_STUB = os.path.join(S_PARAMS_DIR, "WEST_ICRH_Stub_30to70MHz.s3p")
 # antenna front face data are interpolated on bridge's frequencies
