@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Default ignored files
+.ipynb_checkpoints
+*.pyc
+dist/
+
+.coverage
