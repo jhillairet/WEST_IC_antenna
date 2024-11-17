@@ -26,12 +26,11 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
-          path: wheels
-          merge-multiple: true
+          name: dist
+          path: dist/
 
       - name: Build Package
         run: uv build
 
       - name: Publish to PyPi
-        run: uv publish -v wheels/*
+        run: uv publish
