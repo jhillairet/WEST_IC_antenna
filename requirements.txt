@@ -18,10 +18,18 @@ executing==2.1.0
     # via stack-data
 fonttools==4.55.0
     # via matplotlib
-ipython==8.29.0
-    # via ipywidgets
-ipywidgets==8.1.5
+ipympl==0.9.4
     # via west-ic-antenna (pyproject.toml)
+ipython==8.29.0
+    # via
+    #   ipympl
+    #   ipywidgets
+ipython-genutils==0.2.0
+    # via ipympl
+ipywidgets==8.1.5
+    # via
+    #   west-ic-antenna (pyproject.toml)
+    #   ipympl
 jedi==0.19.2
     # via ipython
 jupyterlab-widgets==3.0.13
@@ -29,7 +37,9 @@ jupyterlab-widgets==3.0.13
 kiwisolver==1.4.7
     # via matplotlib
 matplotlib==3.9.2
-    # via west-ic-antenna (pyproject.toml)
+    # via
+    #   west-ic-antenna (pyproject.toml)
+    #   ipympl
 matplotlib-inline==0.1.7
     # via ipython
 networkx==3.4.2
@@ -38,6 +48,7 @@ numpy==2.1.3
     # via
     #   west-ic-antenna (pyproject.toml)
     #   contourpy
+    #   ipympl
     #   matplotlib
     #   pandas
     #   scikit-rf
@@ -49,7 +60,9 @@ pandas==2.2.3
 parso==0.8.4
     # via jedi
 pillow==11.0.0
-    # via matplotlib
+    # via
+    #   ipympl
+    #   matplotlib
 prompt-toolkit==3.0.48
     # via ipython
 pure-eval==0.2.3
@@ -79,6 +92,7 @@ tqdm==4.67.0
 traitlets==5.14.3
     # via
     #   comm
+    #   ipympl
     #   ipython
     #   ipywidgets
     #   matplotlib-inline
