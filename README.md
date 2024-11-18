@@ -1,9 +1,12 @@
-[![PyPI version](https://badge.fury.io/py/west-ic-antenna.svg)](https://badge.fury.io/py/west-ic-antenna)
+[![PyPI version](https://badge.fury.io/py/west-ic-antenna.svg)](https://badge.fury.io/py/west-ic-antenna) ![Documentation](https://readthedocs.org/projects/west-ic-antenna/badge/?version=stable&style=flat-default)
+
 
 # WEST ICRH Antenna Electrical Model
 
 This code is a numerical model of the WEST Ion Cyclotron Resonance Antenna. The code builds the electrical circuit of an antenna, connecting the different parts of the antenna separately full-wave calculated. The front-face of the antenna, evaluated using bespoke antenna code or full-wave software, is given as an input. The antenna tuning capacitors can be automatically optimized for a given frequency. The voltages and currents at the capacitors can be evaluated for a given antenna excitation (power and phase).   
 
+## Documentation
+The documentation and examples are available on this page : https://west-ic-antenna.readthedocs.io/en/stable/
 
 ## Antenna Digital Twin
 
