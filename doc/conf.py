@@ -40,7 +40,7 @@ exclude_files = [
     #'chart_strap_reactance.ipynb',
     #'chart_manual_matching.ipynb',
     'coupling_to_ideal_load.ipynb',
-    'coupling_to_plasma_from_COMSOL.ipynb',
+    #'coupling_to_plasma_from_COMSOL.ipynb',
     'coupling_to_plasma_from_TOPICA.ipynb',
     'coupling_to_water_tank.ipynb',
     'digital_twin.ipynb',

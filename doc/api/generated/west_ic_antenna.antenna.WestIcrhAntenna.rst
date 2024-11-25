@@ -27,6 +27,9 @@
       ~WestIcrhAntenna.currents_WEST
       ~WestIcrhAntenna.error_signals
       ~WestIcrhAntenna.front_face_Rc
+      ~WestIcrhAntenna.front_face_current_waves
+      ~WestIcrhAntenna.front_face_powers_phases
+      ~WestIcrhAntenna.front_face_voltage_waves
       ~WestIcrhAntenna.interpolate_front_face
       ~WestIcrhAntenna.load
       ~WestIcrhAntenna.match_both_sides
