@@ -414,8 +414,7 @@ class WestIcrhAntenna:
             self._circuit = self._antenna_circuit(Cs)
         else:
             # Update only the capacitors Networks to speed up
-            C1_ntw, C2_ntw, capa_C3_ntw, C4_ntw = self._capacitors(Cs)
-            self._circuit = self._circuit.update_networks([C1_ntw, C2_ntw, capa_C3_ntw, C4_ntw])
+            self._circuit = self._circuit.update_networks(self._capacitors(Cs))
         return self._circuit
 
     def _optim_fun_one_side(
@@ -498,10 +497,10 @@ class WestIcrhAntenna:
         """
         Optimisation function to match both antenna sides.
 
-        Optimization is made for active Z parameters, that is taking into
+        Optimisation is made for active Z parameters, that is taking into
         account the antenna excitation.
 
-        The residual used for the optimization is calculated as:
+        The residual used for the optimisation is calculated as:
 
         .. math::
 
@@ -553,7 +552,7 @@ class WestIcrhAntenna:
         decimals: Union[int, None] = None,
     ) -> NumberLike:
         """
-        Search best capacitance to match the specified side of the antenna.
+        Search the best capacitance to match the specified side of the antenna.
 
         Capacitance of the non-matched side are set to 120 [pF].
 
@@ -715,9 +714,9 @@ class WestIcrhAntenna:
         power : list or array
             Input power at external ports in Watts [W]. Default is [1, 1] W.
         phase : list or array
-            Input phase at external ports in radian [rad]. Defalt is dipole [0, pi] rad.
+            Input phase at external ports in radian [rad]. Default is dipole [0, pi] rad.
         method : str, optional
-            Scipy Optimization mathod. 'SLSQP' (default) or 'COBYLA'
+            Scipy Optimization method. 'SLSQP' (default) or 'COBYLA'
         C0 : list or None, optional
             Initial guess of the matching point. If None, the initial guess
             is obtained from matching both sides separately. Default is None.
