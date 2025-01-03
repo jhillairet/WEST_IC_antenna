@@ -241,7 +241,7 @@ class WestIcrhAntenna:
             Bridge side characteristic impedance in [Ohm].
             The default is bridge z0.
         z0_antenna : float, optional
-            Antenna side charactetistic impedance in [Ohm].
+            Antenna side characteristic impedance in [Ohm].
             The default is the antenna z0
         name : str, optional
             capacitor Network name. Default is 'capa'.
@@ -290,6 +290,39 @@ class WestIcrhAntenna:
 
         return capa
 
+    def _capacitors(self, Cs: NumberLike) -> List["rf.Network"]:
+        """
+        Create the four capacitor Networks
+
+        Parameters
+        ----------
+        Cs : list or array or None
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+            Default is None (use internal Cs).
+
+        Returns
+        -------
+        C1_ntw, C2_ntw, C3_ntw, C4_ntw : rf.Network
+            capacitor networks
+
+        """
+        C1, C2, C3, C4 = Cs
+        # left side
+        C1_ntw = self.capa(
+            C1, z0_bridge=self.bridge_left.z0[0][1], z0_antenna=self.antenna.z0[0][0], name="C1"
+        )
+        C2_ntw = self.capa(
+            C2, z0_bridge=self.bridge_left.z0[0][2], z0_antenna=self.antenna.z0[0][2], name="C2"
+        )
+        # right side
+        C3_ntw = self.capa(
+            C3, z0_bridge=self.bridge_right.z0[0][1], z0_antenna=self.antenna.z0[0][1], name="C3"
+        )
+        C4_ntw = self.capa(
+            C4, z0_bridge=self.bridge_right.z0[0][2], z0_antenna=self.antenna.z0[0][3], name="C4"
+        )
+        return C1_ntw, C2_ntw, C3_ntw, C4_ntw
+
     def _antenna_circuit(self, Cs: NumberLike) -> "rf.Circuit":
         """
         Antenna scikit-rf Circuit.
@@ -305,21 +338,8 @@ class WestIcrhAntenna:
             Antenna Circuit
 
         """
-        C1, C2, C3, C4 = Cs
-        # left side
-        capa_C1 = self.capa(
-            C1, z0_bridge=self.bridge_left.z0[0][1], z0_antenna=self.antenna.z0[0][0], name="C1"
-        )
-        capa_C2 = self.capa(
-            C2, z0_bridge=self.bridge_left.z0[0][2], z0_antenna=self.antenna.z0[0][2], name="C2"
-        )
-        # right side
-        capa_C3 = self.capa(
-            C3, z0_bridge=self.bridge_right.z0[0][1], z0_antenna=self.antenna.z0[0][1], name="C3"
-        )
-        capa_C4 = self.capa(
-            C4, z0_bridge=self.bridge_right.z0[0][2], z0_antenna=self.antenna.z0[0][3], name="C4"
-        )
+        # capacitor Networks
+        capa_C1, capa_C2, capa_C3, capa_C4 = self._capacitors(Cs)
 
         # WARNING !
         # antenna port numbering convention does not follow capa and voltage :
@@ -389,7 +409,12 @@ class WestIcrhAntenna:
 
         """
         Cs = Cs or self.Cs
-        self._circuit = self._antenna_circuit(Cs)
+        if not hasattr(self, '_circuit'):
+            # Create full circuit
+            self._circuit = self._antenna_circuit(Cs)
+        else:
+            # Update only the capacitors Networks to speed up
+            self._circuit = self._circuit.update_networks(self._capacitors(Cs))
         return self._circuit
 
     def _optim_fun_one_side(
@@ -472,10 +497,10 @@ class WestIcrhAntenna:
         """
         Optimisation function to match both antenna sides.
 
-        Optimization is made for active Z parameters, that is taking into
+        Optimisation is made for active Z parameters, that is taking into
         account the antenna excitation.
 
-        The residual used for the optimization is calculated as:
+        The residual used for the optimisation is calculated as:
 
         .. math::
 
@@ -527,7 +552,7 @@ class WestIcrhAntenna:
         decimals: Union[int, None] = None,
     ) -> NumberLike:
         """
-        Search best capacitance to match the specified side of the antenna.
+        Search the best capacitance to match the specified side of the antenna.
 
         Capacitance of the non-matched side are set to 120 [pF].
 
@@ -689,9 +714,9 @@ class WestIcrhAntenna:
         power : list or array
             Input power at external ports in Watts [W]. Default is [1, 1] W.
         phase : list or array
-            Input phase at external ports in radian [rad]. Defalt is dipole [0, pi] rad.
+            Input phase at external ports in radian [rad]. Default is dipole [0, pi] rad.
         method : str, optional
-            Scipy Optimization mathod. 'SLSQP' (default) or 'COBYLA'
+            Scipy Optimization method. 'SLSQP' (default) or 'COBYLA'
         C0 : list or None, optional
             Initial guess of the matching point. If None, the initial guess
             is obtained from matching both sides separately. Default is None.
