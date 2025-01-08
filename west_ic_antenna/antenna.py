@@ -550,11 +550,12 @@ class WestIcrhAntenna:
         side: str = "left",
         z_match: complex = 29.89 + 0j,
         decimals: Union[int, None] = None,
+        verbose: bool = True
     ) -> NumberLike:
         """
-        Search the best capacitance to match the specified side of the antenna.
+        Search for the best capacitance to match the specified side of the antenna.
 
-        Capacitance of the non-matched side are set to 120 [pF].
+        The capacitances of the non-matched side are set to 120 [pF].
 
         Parameters
         ----------
@@ -571,6 +572,8 @@ class WestIcrhAntenna:
         decimals : int or None, optional
             Round the capacitances to the given number of decimals.
             Default is None (no rounding)
+        verbose : bool
+            Display search information. Default is True.
 
         Returns
         -------
@@ -612,14 +615,21 @@ class WestIcrhAntenna:
             # test if the solution found is the capacitor range
             success = sol.success
             if (
+                # out of range capacitor
                 np.isclose(sol.x, 150).any()
                 or np.isclose(sol.x, 12).any()
-                or np.isclose(sol.x[0], sol.x[1])
+                # can't be found equal
+                or np.isclose(sol.x[0], sol.x[1], atol=1e-3)
+                # too large relative differences 
+                or sol.x[0]/sol.x[1] > 1.2
+                or sol.x[0]/sol.x[1] < 1/1.2
             ):
                 success = False
-                print("Wrong solution (out of range capacitor) ! Re-doing...")
+                if verbose:
+                    print("Wrong solution found ! Re-doing...")
 
-            print(success, f"solution #{solution_number}:", sol.x)
+            if verbose:
+                print(success, f"solution #{solution_number}:", sol.x)
 
         if side == "left":
             Cs = [sol.x[0], sol.x[1], 150, 150]
@@ -629,7 +639,8 @@ class WestIcrhAntenna:
         # round result to realistic values if requested
         if decimals:
             Cs = list(np.round(Cs, decimals=decimals))
-            print("Rounded result:", Cs)
+            if verbose:
+                print("Rounded result:", Cs)
 
         return Cs
 
@@ -639,6 +650,7 @@ class WestIcrhAntenna:
         solution_number: int = 1,
         z_match: NumberLike = [29.89 + 0j, 29.87 + 0j],
         decimals: Union[int, None] = None,
+        verbose: bool = True
     ) -> NumberLike:
         """
         Match both sides separately and returns capacitance values for each sides.
@@ -656,7 +668,8 @@ class WestIcrhAntenna:
             antenna feeder characteristic impedance to match on. Default is 30 ohm
         decimals : int, optional
             Round the capacitances to the given number of decimals. Default is None (no rounding)
-
+        verbose : bool
+            Display search information. Default is True.
 
         Returns
         -------
@@ -670,6 +683,7 @@ class WestIcrhAntenna:
             solution_number=solution_number,
             z_match=z_match[0],
             decimals=decimals,
+            verbose=verbose
         )
         C_right = self.match_one_side(
             side="right",
@@ -677,6 +691,7 @@ class WestIcrhAntenna:
             solution_number=solution_number,
             z_match=z_match[1],
             decimals=decimals,
+            verbose=verbose
         )
 
         C_match = [C_left[0], C_left[1], C_right[2], C_right[3]]
@@ -690,6 +705,7 @@ class WestIcrhAntenna:
         solution_number: int = 1,
         z_match: NumberLike = [29.89 + 0j, 29.89 + 0j],
         decimals: Union[int, None] = None,
+        verbose: bool = True,
         method: str = "SLSQP",
         C0: Union[None, list] = None,
         delta_C: float = 5,
@@ -705,16 +721,18 @@ class WestIcrhAntenna:
         ----------
         f_match: float, optional
             match frequency in [Hz]. Default is 55 MHz.
+        power : list or array
+            Input power at external ports in Watts [W]. Default is [1, 1] W.
+        phase : list or array
+            Input phase at external ports in radian [rad]. Default is dipole [0, pi] rad.
         solution_number: int, optional
             1 or 2: 1 for C_top > C_lower or 2 for C_top < C_lower
         z_match: array of complex, optional
             antenna feeder characteristic impedance to match on. Default is 30 ohm
         decimals : int, optional
             Round the capacitances to the given number of decimals. Default is None (no rounding)
-        power : list or array
-            Input power at external ports in Watts [W]. Default is [1, 1] W.
-        phase : list or array
-            Input phase at external ports in radian [rad]. Default is dipole [0, pi] rad.
+        verbose : bool
+            Display search information. Default is True.
         method : str, optional
             Scipy Optimization method. 'SLSQP' (default) or 'COBYLA'
         C0 : list or None, optional
@@ -755,20 +773,24 @@ class WestIcrhAntenna:
 
         if not C0:
             # initial guess from both side separately
-            print("Looking for individual solutions separately for 1st guess...")
+            if verbose:
+                print("Looking for individual solutions separately for 1st guess...")
             C0 = self.match_both_sides_separately(
                 f_match=f_match,
                 solution_number=solution_number,
                 z_match=z_match,
                 decimals=decimals,
+                verbose=verbose
             )
 
-        print("Searching for the active match point solution...")
+        if verbose:
+            print("Searching for the active match point solution...")
         success = False
         while not success:
-            print(
-                f"Reducing search range to +/- {delta_C}pF around individual solutions"
-            )
+            if verbose:
+                print(
+                    f"Reducing search range to +/- {delta_C}pF around individual solutions"
+                )
             lb = np.array(
                 [
                     C0[0] - delta_C,
@@ -822,16 +844,19 @@ class WestIcrhAntenna:
                 or np.isclose(sol.x[2], sol.x[3])
             ):
                 success = False
-                print("Wrong solution (out of range capacitor) ! Re-doing...")
+                if verbose:
+                    print("Wrong solution (out of range capacitor) ! Re-doing...")
 
-            print(success, f"solution #{solution_number}:", sol.x)
+            if verbose:
+                print(success, f"solution #{solution_number}:", sol.x)
 
         Cs = [sol.x[0], sol.x[1], sol.x[2], sol.x[3]]
 
         # round result to realistic values if requested
         if decimals:
             Cs = list(np.round(Cs, decimals=decimals))
-            print("Rounded result:", Cs)
+            if verbose:
+                print("Rounded result:", Cs)
 
         return Cs
 

@@ -211,6 +211,15 @@ def test_match_both_sides_separately(antenna_default_arg):
     # reference values 25/03/2024
     np.testing.assert_allclose(Cs, [51.44282792582701, 49.32527088864287, 51.20987339854108, 49.48946981138618], rtol=1e-1)
 
+def test_match_both_sides_separately_plasma():
+    # Test the matching set for a plasma
+    plasma = WestIcrhAntenna.interpolate_front_face(Rc=1, source='TOPICA-H-mode')
+    freq = rf.Frequency(55, 55, npoints=1, unit='MHz')
+    ant_plasma = WestIcrhAntenna(frequency=freq, front_face=plasma)
+    Cs = ant_plasma.match_both_sides_separately(f_match=55e6)
+    # reference values version 0.14.0
+    np.testing.assert_allclose(Cs, [54.41165709, 46.46759841, 54.02665722, 46.62026873], rtol=1e-1)
+
 def test_match_both_sides(antenna_default_arg):
     # Test the return values of both sides matching
     Cs = antenna_default_arg.match_both_sides(
@@ -220,6 +229,15 @@ def test_match_both_sides(antenna_default_arg):
         )
     # reference values 25/03/2024
     np.testing.assert_allclose(Cs, [52.09695694, 50.08075395, 51.62129529, 50.25710599], rtol=1e-1)
+
+def test_match_both_sides_plasma():
+    # Test the matching set for a plasma
+    plasma = WestIcrhAntenna.interpolate_front_face(Rc=1, source='TOPICA-H-mode')
+    freq = rf.Frequency(55, 55, npoints=1, unit='MHz')
+    ant_plasma = WestIcrhAntenna(frequency=freq, front_face=plasma)
+    Cs = ant_plasma.match_both_sides(f_match=55e6)
+    # reference values version 0.14.0
+    np.testing.assert_allclose(Cs, [55.01900067, 46.71040951, 54.72355795, 46.88053526], rtol=1e-1)
 
 def test_currents(antenna_default_arg):
     ant_1freq = WestIcrhAntenna(frequency=rf.Frequency(55,55,1,unit='MHz'))
