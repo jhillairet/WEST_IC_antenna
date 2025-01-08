@@ -773,7 +773,8 @@ class WestIcrhAntenna:
 
         if not C0:
             # initial guess from both side separately
-            print("Looking for individual solutions separately for 1st guess...")
+            if verbose:
+                print("Looking for individual solutions separately for 1st guess...")
             C0 = self.match_both_sides_separately(
                 f_match=f_match,
                 solution_number=solution_number,
