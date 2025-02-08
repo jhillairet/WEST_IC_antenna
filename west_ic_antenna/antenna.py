@@ -16,8 +16,10 @@ import skrf as rf
 import numpy as np
 
 # Type Hinting Definition
-from typing import Union, Sequence, List, Tuple, TYPE_CHECKING
+from typing import Union, Sequence, List, Tuple, TYPE_CHECKING, Callable
 from numbers import Number
+
+from scipy.optimize import minimize
 
 NumberLike = Union[Number, Sequence[Number], np.ndarray]
 
@@ -859,6 +861,43 @@ class WestIcrhAntenna:
                 print("Rounded result:", Cs)
 
         return Cs
+
+    def optimize(self, fun, C0, args=(),
+                 method=None, jac=None, hess=None,
+                hessp=None, bounds=None, constraints=(), tol=None,
+                callback=None, options=None) -> list[float]:
+        """
+        Optimize the capacitors for a given objective function.
+
+        Parameters
+        ----------
+        fun : callable
+            The objection function to be minimized::
+
+                fun(x, *args) -> float
+
+        where ``x`` is a 1-D array with shape (n,) and ``args``
+        is a tuple of the fixed parameters needed to completely
+        specify the function. This function is passed to `scipy.optimize`
+        C0 :  list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+        args : tuple, optional
+            Extra arguments passed to the objective function and its
+            derivatives (`fun`, `jac` and `hess` functions).
+        All other parameters are the same as in `scipy.minimize`:
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize
+
+        Returns
+        -------
+        Cs : list or array
+            antenna 4 capacitances [C1, C2, C3, C4] in [pF].
+
+        """
+        res = minimize(fun, C0, args, method=method, jac=jac, hess=hess,
+                hessp=hessp, bounds=bounds, constraints=constraints, tol=tol,
+                callback=callback, options=options)
+        return res.x
+
 
     def _callback(self, xk, step=[0]):
         """Store intermediate steps of the minimizer."""
