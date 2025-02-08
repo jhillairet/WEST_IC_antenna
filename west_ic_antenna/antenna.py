@@ -623,8 +623,8 @@ class WestIcrhAntenna:
                 # can't be found equal
                 or np.isclose(sol.x[0], sol.x[1], atol=1e-3)
                 # too large relative differences 
-                or sol.x[0]/sol.x[1] > 1.2
-                or sol.x[0]/sol.x[1] < 1/1.2
+                or sol.x[0]/sol.x[1] > 1.4
+                or sol.x[0]/sol.x[1] < 1/1.4
             ):
                 success = False
                 if verbose:
@@ -784,6 +784,9 @@ class WestIcrhAntenna:
                 decimals=decimals,
                 verbose=verbose
             )
+        else:
+            if verbose:
+                print(f"Using given first guess: {C0}")
 
         if verbose:
             print("Searching for the active match point solution...")
@@ -835,7 +838,7 @@ class WestIcrhAntenna:
                     options={"disp": self.DEBUG, "rhobeg": 0.01, "maxiter": maxiter},
                 )
             else:
-                raise ValueError(f"Optimisation method {method} is unknow.")
+                raise ValueError(f"Optimisation method {method} is unknown.")
 
             # test if the solution found is the capacitor range
             success = sol.success
