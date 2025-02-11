@@ -20,6 +20,12 @@ def antenna_default_arg():
     """Default West ICRH Antenna class"""
     return WestIcrhAntenna()
 
+@pytest.fixture
+def ant_1freq():
+    """Single frequency 55 MHz default antenna class"""
+    # use single frequency to be faster
+    return WestIcrhAntenna(frequency=rf.Frequency(55, 55, 1, unit='MHz'))
+
 
 # Constructor Tests
 def test_constructor_default(antenna_default_arg):
@@ -239,10 +245,8 @@ def test_match_both_sides_plasma():
     # reference values version 0.14.0
     np.testing.assert_allclose(Cs, [55.01900067, 46.71040951, 54.72355795, 46.88053526], rtol=1e-1)
 
-def test_currents(antenna_default_arg):
-    ant_1freq = WestIcrhAntenna(frequency=rf.Frequency(55,55,1,unit='MHz'))
+def test_currents(ant_1freq, antenna_default_arg):
     Cs = [50] * 4
-
     # check for several antenna cases
     for ant in [ant_1freq, antenna_default_arg]:
         # check for several feeding schemes
@@ -256,11 +260,9 @@ def test_currents(antenna_default_arg):
                 _I_tot = np.einsum('fij,fj->fi', ant.antenna.y, V_tot)
                 np.testing.assert_allclose(_I_tot, I_tot)
 
-def test_front_face_voltage_waves(antenna_default_arg):
+def test_front_face_voltage_waves(ant_1freq, antenna_default_arg):
     # Single freq antenna
     Cs = [50]*4
-    ant_1freq = WestIcrhAntenna(frequency=rf.Frequency(55,55,1,unit='MHz'))
-
     # check for several antenna cases
     for ant in [ant_1freq, antenna_default_arg]:
         # check for several feeding schemes
@@ -277,11 +279,9 @@ def test_front_face_voltage_waves(antenna_default_arg):
                 z0 = ant.antenna.z0
                 np.testing.assert_allclose((V_fwd - V_ref)/z0, I_tot[:,[0,2,1,3]])
 
-def test_front_face_current_waves(antenna_default_arg):
+def test_front_face_current_waves(ant_1freq, antenna_default_arg):
     # Single freq antenna
     Cs = [50]*4
-    ant_1freq = WestIcrhAntenna(frequency=rf.Frequency(55,55,1,unit='MHz'))
-
     # check for several antenna cases
     for ant in [ant_1freq, antenna_default_arg]:
         # check for several feeding schemes
@@ -293,11 +293,9 @@ def test_front_face_current_waves(antenna_default_arg):
                 I_tot = ant.currents(power, phase, Cs)
                 np.testing.assert_allclose(I_fwd - I_ref, I_tot[:, [0, 2, 1, 3]], rtol=1e-5)
 
-def test_front_face_powers_phases(antenna_default_arg):
+def test_front_face_powers_phases(ant_1freq):
     # Single freq antenna
     Cs = [50]*4
-    ant_1freq = WestIcrhAntenna(frequency=rf.Frequency(55,55,1,unit='MHz'))
-
     power = [1, 1]
     phase = [0, np.pi]
     ant = ant_1freq
@@ -319,6 +317,34 @@ def test_front_face_powers_phases(antenna_default_arg):
     np.testing.assert_allclose(powers, P_tot2 - P_ref_and_c)
 
     # TODO test phases?
+
+def test_optimize(ant_1freq):
+    """Test the external optimization method"""
+
+    def test_fun(C0: list) -> float:
+        "Simple optimization function to match the antenna in dipole at 55 MHz."
+        power = [1, 1]
+        phase = [0, np.pi]
+        f_match = 55e6
+        idx_f = np.argmin(np.abs(ant_1freq.f - f_match))
+        s_act = ant_1freq.s_act(power, phase, Cs=list(C0))[idx_f,:]
+        r = np.sqrt(np.sum(np.abs(s_act) ** 2))
+        return r
+
+    # use separate matches as starting point
+    C0 = ant_1freq.match_both_sides_separately()
+
+    print(f"Start custom optimizer from {C0}")
+    options = {"disp": True, "ftol": 1e-3, "maxiter": 30}
+    Cs = ant_1freq.optimize(test_fun, C0, method="SLSQP", options=options)
+    # should found something around [51.99750051 50.06310567 51.70383494 50.28032761]
+    print(f'Test optimized capacitor set, found: {Cs}')
+
+    # Compare to the 'classic' matching solution in same conditions
+    Cs_ref = ant_1freq.match_both_sides(f_match=55e6)  # [52.09595223 50.08136987 51.62085973 50.25696768]
+    print(f'Reference optimized capacitor set, found: {Cs_ref}')
+
+    np.testing.assert_allclose(Cs, Cs_ref, atol=0.1)
 
 if __name__ == "__main__":
     pytest.main([__file__])
