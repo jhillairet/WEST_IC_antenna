@@ -28,7 +28,8 @@ docs = [
 ]
 
 [tool.setuptools]
-license-files = ["LICENSE"]
+# license-files = ["LICENSE"]  # tempfix bug in setuptool
+license-files = []
 
 [tool.setuptools.dynamic]
 version = {attr = "west_ic_antenna.__version__"}
