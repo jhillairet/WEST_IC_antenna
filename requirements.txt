@@ -59,7 +59,7 @@ pandas==2.2.3
     # via scikit-rf
 parso==0.8.4
     # via jedi
-pillow==11.0.0
+pillow==12.1.1
     # via
     #   ipympl
     #   matplotlib
