@@ -12,6 +12,7 @@ WEST ICRH Antenna RF Model
 """
 import os
 import scipy
+import skrf
 import skrf as rf
 import numpy as np
 
@@ -57,7 +58,7 @@ class WestIcrhAntenna:
         antenna 4 capacitances [C1, C2, C3, C4] in [pF].
         Default is [50,50,50,50] [pF]
 
-    front_face: str or :class:`skrf.network.Network`, optional
+    front_face: str or :class: `pathlib.Path` or :class:`skrf.network.Network`, optional
         path to the Touchstone file of the antenna front face.
         Default is None (Vacuum case).
         If the frequency band of the front_face Network is a unique point,
@@ -101,7 +102,7 @@ class WestIcrhAntenna:
         self,
         frequency: Union["Frequency", None] = None,
         Cs: NumberLike = [50, 50, 50, 50],
-        front_face: Union[str, None] = None,
+        front_face: Union[str, os.PathLike, rf.Network, None] = None,
     ):
         self._frequency = frequency or rf.Network(DEFAULT_BRIDGE).frequency
         self._Cs = Cs
@@ -157,8 +158,8 @@ class WestIcrhAntenna:
 
         # antenna front-face
         front_face = front_face or DEFAULT_FRONT_FACE
-        if isinstance(front_face, str):
-            # if a string, this should be a path to a Touchstone file
+        if isinstance(front_face, str) or isinstance(front_face, os.PathLike):
+            # if a string or a Path, this should be a path to a Touchstone file
             self._antenna = rf.Network(front_face)
         elif isinstance(front_face, rf.network.Network):
             # if a Network

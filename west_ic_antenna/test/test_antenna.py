@@ -3,7 +3,7 @@ import os
 import pytest
 import skrf as rf
 import numpy as np
-
+from pathlib import Path
 
 from west_ic_antenna.antenna import (
     WestIcrhAntenna,
@@ -47,6 +47,11 @@ def test_setup_constructor_capa():
 
 def test_setup_constructor_front_face_filename():
     _ant = WestIcrhAntenna(front_face=DEFAULT_FRONT_FACE)
+    assert isinstance(_ant, WestIcrhAntenna)
+
+def test_setup_constructor_front_face_path():
+    path = Path(DEFAULT_FRONT_FACE)
+    _ant = WestIcrhAntenna(front_face=path)
     assert isinstance(_ant, WestIcrhAntenna)
 
 
