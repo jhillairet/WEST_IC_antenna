@@ -24,6 +24,7 @@ version = {attr = "west_ic_antenna.__version__"}
 
 [dependency-groups]
 dev = [
+    "ipython>=9.10.0",
     "prek>=0.3.2",
     {include-group = "test"},
     {include-group = "docs"},
