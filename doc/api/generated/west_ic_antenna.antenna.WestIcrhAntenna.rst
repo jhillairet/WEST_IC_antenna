@@ -36,6 +36,7 @@
       ~WestIcrhAntenna.match_both_sides_iterative
       ~WestIcrhAntenna.match_both_sides_separately
       ~WestIcrhAntenna.match_one_side
+      ~WestIcrhAntenna.optimize
       ~WestIcrhAntenna.optimum_frequency
       ~WestIcrhAntenna.optimum_frequency_index
       ~WestIcrhAntenna.s_act

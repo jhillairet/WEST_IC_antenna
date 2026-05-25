@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'WEST IC Antenna'
-copyright = '2024, Julien Hillairet'
+copyright = '2026, Julien Hillairet'
 author = 'Julien Hillairet'
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -39,6 +39,7 @@ exclude_patterns = ['_build', '**.ipynb_checkpoints', 'Thumbs.db', '.DS_Store']
 exclude_files = [
     #'chart_strap_reactance.ipynb',
     #'chart_manual_matching.ipynb',
+    'chart_manual_matching_vacuum.ipynb',
     'coupling_to_ideal_load.ipynb',
     #'coupling_to_plasma_from_COMSOL.ipynb',
     'coupling_to_plasma_from_TOPICA.ipynb',
