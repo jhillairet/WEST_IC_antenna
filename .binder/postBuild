@@ -1,0 +1,3 @@
+#!/bin/bash
+# Install the package itself without reinstalling dependencies
+pip install --no-deps -e .
