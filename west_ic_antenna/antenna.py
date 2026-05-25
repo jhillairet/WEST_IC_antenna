@@ -14,6 +14,7 @@ import os
 import scipy
 import skrf
 import skrf as rf
+from skrf.circuit import Circuit
 import numpy as np
 
 # Type Hinting Definition
@@ -25,7 +26,8 @@ from scipy.optimize import minimize
 NumberLike = Union[Number, Sequence[Number], np.ndarray]
 
 if TYPE_CHECKING:
-    from skrf import Circuit, Frequency
+    from skrf.circuit import Circuit
+    from skrf.frequency import Frequency
 
 # #### Default parameters ####
 here = os.path.dirname(os.path.abspath(__file__))
@@ -141,16 +143,16 @@ class WestIcrhAntenna:
         self.service_stub_right.name = "service_stub_right"
 
         # service stub shorts
-        self.short_left = rf.Circuit.Ground(self.frequency, name="short_left")
-        self.short_right = rf.Circuit.Ground(self.frequency, name="short_right")
+        self.short_left = Circuit.Ground(self.frequency, name="short_left")
+        self.short_right = Circuit.Ground(self.frequency, name="short_right")
 
         # additional elements which will be usefull later
-        self.port_left = rf.Circuit.Port(
+        self.port_left = Circuit.Port(
             self.frequency,
             "port_left",
             z0=self.windows_impedance_transformer_left.z0[:, 0],
         )
-        self.port_right = rf.Circuit.Port(
+        self.port_right = Circuit.Port(
             self.frequency,
             "port_right",
             z0=self.windows_impedance_transformer_right.z0[:, 0],
@@ -326,7 +328,7 @@ class WestIcrhAntenna:
         )
         return C1_ntw, C2_ntw, C3_ntw, C4_ntw
 
-    def _antenna_circuit(self, Cs: NumberLike) -> "rf.Circuit":
+    def _antenna_circuit(self, Cs: NumberLike) -> "Circuit":
         """
         Antenna scikit-rf Circuit.
 
@@ -373,7 +375,7 @@ class WestIcrhAntenna:
             [(self.service_stub_left, 2), (self.short_left, 0)],
             [(self.service_stub_right, 2), (self.short_right, 0)],
         ]
-        return rf.Circuit(connections)
+        return Circuit(connections)
 
     @property
     def Cs(self) -> List:
@@ -1013,14 +1015,14 @@ class WestIcrhAntenna:
         f = rf.interp1d(self._antenna.f, self._antenna.z0[:, 0])
         _z0 = f(self.f)
         # port and short definitions
-        _port1 = rf.Circuit.Port(self.frequency, "Port1", z0=_z0)
-        _port2 = rf.Circuit.Port(self.frequency, "Port2", z0=_z0)
-        _port3 = rf.Circuit.Port(self.frequency, "Port3", z0=_z0)
-        _port4 = rf.Circuit.Port(self.frequency, "Port4", z0=_z0)
-        _short1 = rf.Circuit.Ground(self.frequency, "Gnd1", z0=_z0)
-        _short2 = rf.Circuit.Ground(self.frequency, "Gnd2", z0=_z0)
-        _short3 = rf.Circuit.Ground(self.frequency, "Gnd3", z0=_z0)
-        _short4 = rf.Circuit.Ground(self.frequency, "Gnd4", z0=_z0)
+        _port1 = Circuit.Port(self.frequency, "Port1", z0=_z0)
+        _port2 = Circuit.Port(self.frequency, "Port2", z0=_z0)
+        _port3 = Circuit.Port(self.frequency, "Port3", z0=_z0)
+        _port4 = Circuit.Port(self.frequency, "Port4", z0=_z0)
+        _short1 = Circuit.Ground(self.frequency, "Gnd1", z0=_z0)
+        _short2 = Circuit.Ground(self.frequency, "Gnd2", z0=_z0)
+        _short3 = Circuit.Ground(self.frequency, "Gnd3", z0=_z0)
+        _short4 = Circuit.Ground(self.frequency, "Gnd4", z0=_z0)
         # load definition
         z_s = Rc + 1j * Xs
         media = rf.DefinedGammaZ0(frequency=self.frequency, z0=_z0)
@@ -1040,7 +1042,7 @@ class WestIcrhAntenna:
             [(_load4, 1), (_short4, 0)],
         ]
 
-        crt = rf.Circuit(cnx)
+        crt = Circuit(cnx)
         _antenna = crt.network
         _antenna.name = "antenna"
         self.antenna = _antenna
