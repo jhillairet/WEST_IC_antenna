@@ -15,6 +15,7 @@ import scipy
 import skrf
 import skrf as rf
 from skrf.circuit import Circuit
+from skrf.networkSet import NetworkSet 
 import numpy as np
 
 # Type Hinting Definition
@@ -2167,7 +2168,7 @@ class WestIcrhAntenna:
                 1.607,
             ]
 
-        ntw_set = rf.NetworkSet(ntwks)
+        ntw_set = NetworkSet(ntwks)
 
         # interpolate if desired Rc is within the Rcs
         if Rcs[0] <= Rc <= Rcs[-1]:
