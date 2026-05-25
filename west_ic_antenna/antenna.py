@@ -1874,10 +1874,12 @@ class WestIcrhAntenna:
         f_match: float = 55e6,
         power: NumberLike = [1, 1],
         phase: NumberLike = [0, np.pi],
-        Cs: Union[None, list] = None,
+        C0: Union[None, list] = None,
         solution_number: int = 1,
         z_T_target: float = Z_T_OPT,
         K: float = 0.7,
+        verbose: bool = True,
+        Cs: Union[None, list] = None,
     ) -> NumberLike:
         """
         Match both sides using the automatic matching alg. (iterative).
@@ -1890,7 +1892,7 @@ class WestIcrhAntenna:
             Input power at external ports in Watts [W]
         phase : list or array
             Input phase at external ports in radian [rad]
-        Cs : list or array
+        C0 : list or array, optional
             antenna 4 capacitances [C1, C2, C3, C4] in [pF].
             Default is None (use internal Cs)
         z_T_target : complex, optional
@@ -1901,6 +1903,10 @@ class WestIcrhAntenna:
         K : float, optional
             Gain. Default value: 0.7.
             Smaller value leads to higher number of iterations.
+        verbose : bool, optional
+            Display search information. Default is True.
+        Cs : list or array, optional
+            Alias for C0, for backward compatibility. Default is None.
 
         Returns
         -------
@@ -1908,10 +1914,10 @@ class WestIcrhAntenna:
             antenna 4 capacitances [C1, C2, C3, C4] in [pF].
 
         """
-        if Cs is None:
-            C0 = self.Cs
-        else:
+        if C0 is None and Cs is not None:
             C0 = Cs
+        if C0 is None:
+            C0 = self.Cs
 
         # if C0 is not None:
         #     if solution_number == 1:
@@ -1956,8 +1962,9 @@ class WestIcrhAntenna:
             Cs.append([Cit[0], Cit[1], Cit[2], Cit[3]])
         # store the history of iterative solutions
         self._steps = Cs
-        print(f"Stopped after {iterations} iterations")
-        print(f"Solution found: {Cit}")
+        if verbose:
+            print(f"Stopped after {iterations} iterations")
+            print(f"Solution found: {Cit}")
         return Cit
 
     def front_face_voltage_waves(

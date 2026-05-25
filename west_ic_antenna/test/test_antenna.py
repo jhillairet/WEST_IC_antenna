@@ -351,5 +351,31 @@ def test_optimize(ant_1freq):
 
     np.testing.assert_allclose(Cs, Cs_ref, atol=0.1)
 
+def test_matching_verbosity(capsys, ant_1freq):
+    """Test that setting verbose=False silences stdout across all match methods"""
+    # 1. match_one_side
+    capsys.readouterr()
+    ant_1freq.match_one_side(f_match=55e6, side="left", verbose=False)
+    out, _ = capsys.readouterr()
+    assert out == ""
+
+    # 2. match_both_sides_separately
+    capsys.readouterr()
+    ant_1freq.match_both_sides_separately(f_match=55e6, verbose=False)
+    out, _ = capsys.readouterr()
+    assert out == ""
+
+    # 3. match_both_sides
+    capsys.readouterr()
+    ant_1freq.match_both_sides(f_match=55e6, verbose=False)
+    out, _ = capsys.readouterr()
+    assert out == ""
+
+    # 4. match_both_sides_iterative
+    capsys.readouterr()
+    ant_1freq.match_both_sides_iterative(f_match=55e6, verbose=False)
+    out, _ = capsys.readouterr()
+    assert out == ""
+
 if __name__ == "__main__":
     pytest.main([__file__])
