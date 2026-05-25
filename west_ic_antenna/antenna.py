@@ -16,6 +16,7 @@ import skrf
 import skrf as rf
 from skrf.circuit import Circuit
 from skrf.networkSet import NetworkSet 
+from skrf.media.media import DefinedGammaZ0
 import numpy as np
 
 # Type Hinting Definition
@@ -1026,7 +1027,7 @@ class WestIcrhAntenna:
         _short4 = Circuit.Ground(self.frequency, "Gnd4", z0=_z0)
         # load definition
         z_s = Rc + 1j * Xs
-        media = rf.DefinedGammaZ0(frequency=self.frequency, z0=_z0)
+        media = DefinedGammaZ0(frequency=self.frequency, z0=_z0)
         _load1 = media.resistor(z_s, name="load1", z0=_z0)
         _load2 = media.resistor(z_s, name="load2", z0=_z0)
         _load3 = media.resistor(z_s, name="load3", z0=_z0)
@@ -1047,6 +1048,9 @@ class WestIcrhAntenna:
         _antenna = crt.network
         _antenna.name = "antenna"
         self.antenna = _antenna
+        # Invalidate cached circuit so it gets rebuilt with the new antenna
+        if hasattr(self, '_circuit'):
+            del self._circuit
 
     def b(self, a: NumberLike, Cs: Union[NumberLike, None] = None) -> NumberLike:
         """

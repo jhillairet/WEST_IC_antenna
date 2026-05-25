@@ -12,9 +12,14 @@ Welcome to the documentation pages of the WEST IC Antenna RF model.
    introduction.ipynb
    tutorial_matching_manual.ipynb
    tutorial_matching_automatic.ipynb
+
    chart_strap_reactance.ipynb
    chart_manual_matching.ipynb
+   chart_manual_matching_vacuum.ipynb
+
+   coupling_to_ideal_load.ipynb
    coupling_to_plasma_from_COMSOL.ipynb
+   
    phase_scan.ipynb
    
    api/index.rst

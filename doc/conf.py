@@ -37,9 +37,6 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', '**.ipynb_checkpoints', 'Thumbs.db', '.DS_Store']
 # exclude some notebooks not yet ready to be converted into html
 exclude_files = [
-    'chart_manual_matching_vacuum.ipynb',
-    'chart_manual_matching.ipynb',
-    'coupling_to_ideal_load.ipynb',
     'coupling_to_plasma_from_TOPICA.ipynb',
     'coupling_to_water_tank.ipynb',
     'digital_twin.ipynb',
